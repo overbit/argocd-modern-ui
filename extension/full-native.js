@@ -3,14 +3,15 @@
 
   globalThis.__ARGOCD_FULL_NATIVE_FACTORY__ = ({state, esc}) => {
     const styles = `
+      .button,.nav button,.app-tabs button{min-height:44px}
       .parity-surface{border:1px solid var(--border);border-radius:10px;background:var(--panel);overflow:hidden;box-shadow:0 1px 2px rgba(31,35,40,.04)}
-      .parity-head{display:flex;align-items:center;gap:12px;min-height:48px;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--bg)}
+      .parity-head{display:flex;align-items:center;gap:12px;min-height:52px;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--bg)}
       .parity-head strong{font-size:13px}.parity-head small{display:block;color:var(--muted);font-size:11px}.parity-path{margin-left:auto;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:11px/1.4 "SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace}
       .parity-frame{display:block;width:100%;height:calc(100vh - 190px);min-height:620px;border:0;background:var(--panel)}
       .parity-note{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:11px}.parity-note i{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
-      .graph-parity-overlay{position:fixed;inset:12px;z-index:1000;display:grid;grid-template-rows:52px minmax(0,1fr);overflow:hidden;border:1px solid var(--border);border-radius:12px;background:var(--bg);box-shadow:0 24px 80px rgba(1,4,9,.32)}
-      .graph-parity-top{display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--border);background:var(--panel)}.graph-parity-top strong{font-size:13px}.graph-parity-top span{color:var(--muted);font-size:11px}.graph-parity-close{margin-left:auto;min-width:44px;min-height:36px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);font-weight:650;cursor:pointer}.graph-parity-close:hover{background:var(--soft)}.graph-parity-overlay .parity-surface{height:100%;border:0;border-radius:0}.graph-parity-overlay .parity-frame{height:calc(100vh - 126px);min-height:0}
-      @media(max-width:900px){.parity-frame{height:calc(100vh - 160px);min-height:520px}.parity-path{display:none}.parity-head{padding:8px 10px}.graph-parity-overlay{inset:6px}.graph-parity-overlay .parity-frame{height:calc(100vh - 112px)}}
+      .graph-parity-overlay{position:fixed;inset:12px;z-index:1000;display:grid;grid-template-rows:56px minmax(0,1fr);overflow:hidden;border:1px solid var(--border);border-radius:12px;background:var(--bg);box-shadow:0 24px 80px rgba(1,4,9,.32)}
+      .graph-parity-top{display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--border);background:var(--panel)}.graph-parity-top strong{font-size:13px}.graph-parity-top span{color:var(--muted);font-size:11px}.graph-parity-close{margin-left:auto;min-width:44px;min-height:44px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);font-weight:650;cursor:pointer}.graph-parity-close:hover{background:var(--soft)}.graph-parity-close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.graph-parity-overlay .parity-surface{height:100%;border:0;border-radius:0}.graph-parity-overlay .parity-frame{height:calc(100vh - 130px);min-height:0}
+      @media(max-width:900px){.parity-frame{height:calc(100vh - 160px);min-height:520px}.parity-path{display:none}.parity-head{padding:8px 10px}.graph-parity-overlay{inset:6px}.graph-parity-overlay .parity-frame{height:calc(100vh - 116px)}}
     `;
 
     const cleanPath = path => `/${String(path || '').replace(/^\/+/, '')}`;
@@ -64,6 +65,22 @@
     globalThis.__ARGOCD_FULL_GRAPH_FACTORY__ = options => {
       const {state, esc, rerender} = options;
       const base = () => String(state.baseUrl || '').replace(/\/+$/, '');
+      const resourceIdentity = resource => [resource?.group || '', resource?.kind || '', resource?.namespace || '', resource?.name || ''].join('|');
+      const mergeResourceStatus = () => {
+        const statusByIdentity = new Map((state.selected?.status?.resources || []).map(resource => [resourceIdentity(resource), resource]));
+        const merge = node => {
+          const status = statusByIdentity.get(resourceIdentity(node));
+          if (!status) return node;
+          node.health = status.health || node.health;
+          node.status = status.status || node.status;
+          node.hook = status.hook;
+          node.syncWave = status.syncWave;
+          node.requiresPruning = status.requiresPruning;
+          return node;
+        };
+        (state.tree?.nodes || []).forEach(merge);
+        (state.tree?.orphanedNodes || []).forEach(merge);
+      };
       const request = async (path, requestOptions = {}) => {
         const response = await fetch(`${base()}${path}`, {
           credentials: 'include',
@@ -95,6 +112,7 @@
           request(`/api/v1/applications/${name}${query}`),
           request(`/api/v1/applications/${name}/resource-tree${query}`)
         ]);
+        mergeResourceStatus();
         rerender?.();
       };
       const openOriginal = path => {
@@ -109,13 +127,24 @@
         native.bind(overlay);
       };
 
-      return graphFactory({
+      const graph = graphFactory({
         ...options,
         api: options.api || request,
         fetchText: options.fetchText || fetchText,
         reloadApp: options.reloadApp || reloadApp,
         openOriginal: options.openOriginal || openOriginal
       });
+      const wrap = method => (...args) => {
+        mergeResourceStatus();
+        return graph[method](...args);
+      };
+      return {
+        ...graph,
+        resourceNodes: wrap('resourceNodes'),
+        toolbar: wrap('toolbar'),
+        content: wrap('content'),
+        bind: wrap('bind')
+      };
     };
   }
 })();
