@@ -31,7 +31,7 @@ export async function syncRegistration() {
     {
       id: CONTENT_SCRIPT_ID,
       matches: [pattern],
-      js: ['content.js'],
+      js: ['full-ui.js', 'content.js'],
       css: ['modern.css'],
       runAt: 'document_idle',
       persistAcrossSessions: true
