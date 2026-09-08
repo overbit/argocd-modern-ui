@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
+await import('../extension/full-graph.js');
 await import('../extension/full-native.js');
 
 const createNative = baseUrl => globalThis.__ARGOCD_FULL_NATIVE_FACTORY__({
@@ -32,6 +33,50 @@ test('full parity surface can expose the complete native workspace', () => {
   const native = createNative('https://argocd.example.com');
   const markup = native.frame('/applications', {title: 'All features', fullChrome: true});
   assert.match(markup, /data-native-chrome="full"/);
+});
+
+test('full graph merges application resource status by Kubernetes identity rather than UID', () => {
+  const state = {
+    baseUrl: 'https://argocd.example.com',
+    root: null,
+    selected: {
+      metadata: {name: 'demo', namespace: 'argocd'},
+      status: {
+        resources: [{
+          group: 'apps',
+          kind: 'Deployment',
+          namespace: 'default',
+          name: 'api',
+          status: 'OutOfSync',
+          health: {status: 'Degraded'}
+        }]
+      }
+    },
+    tree: {
+      nodes: [{
+        uid: 'deployment-uid',
+        group: 'apps',
+        kind: 'Deployment',
+        namespace: 'default',
+        name: 'api',
+        health: {status: 'Healthy'},
+        parentRefs: []
+      }],
+      orphanedNodes: []
+    }
+  };
+  const graph = globalThis.__ARGOCD_FULL_GRAPH_FACTORY__({
+    state,
+    esc: value => String(value ?? ''),
+    badge: value => String(value ?? ''),
+    tone: () => 'muted',
+    health: () => 'Unknown',
+    sync: () => 'Unknown',
+    rerender: () => {}
+  });
+  const [node] = graph.resourceNodes();
+  assert.equal(node.status, 'OutOfSync');
+  assert.equal(node.health.status, 'Degraded');
 });
 
 test('runtime loads full-native before full-ui in both injection paths', () => {
