@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {getOriginPattern, isUrlWithinConfiguredBase, normalizeArgoUrl} from '../extension/settings.js';
+import {
+  getOriginPattern,
+  isUrlWithinConfiguredBase,
+  normalizeArgoUrl,
+  normalizeTheme,
+  normalizeUiMode
+} from '../extension/settings.js';
 
 test('normalizeArgoUrl strips query, hash, credentials and trailing slash', () => {
   assert.equal(
@@ -32,4 +38,22 @@ test('path-hosted configuration matches only the configured path boundary', () =
   assert.equal(isUrlWithinConfiguredBase('https://example.com/argocd/applications/foo', base), true);
   assert.equal(isUrlWithinConfiguredBase('https://example.com/argocd2/applications/foo', base), false);
   assert.equal(isUrlWithinConfiguredBase('https://example.com/other', base), false);
+});
+
+test('normalizeUiMode supports original, hybrid, and full', () => {
+  assert.equal(normalizeUiMode('original'), 'original');
+  assert.equal(normalizeUiMode('hybrid'), 'hybrid');
+  assert.equal(normalizeUiMode('full'), 'full');
+});
+
+test('normalizeUiMode migrates the legacy enabled flag', () => {
+  assert.equal(normalizeUiMode(undefined, false), 'original');
+  assert.equal(normalizeUiMode(undefined, true), 'hybrid');
+});
+
+test('normalizeTheme supports system, light, and dark with a safe default', () => {
+  assert.equal(normalizeTheme('system'), 'system');
+  assert.equal(normalizeTheme('light'), 'light');
+  assert.equal(normalizeTheme('dark'), 'dark');
+  assert.equal(normalizeTheme('unknown'), 'system');
 });
