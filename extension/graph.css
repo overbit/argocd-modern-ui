@@ -67,9 +67,11 @@ html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-r
 html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node::before { left: -6px; }
 html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node::after { right: -6px; }
 
-html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__filtered-indicator::before,
-html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__filtered-indicator::after {
-  display: none;
+/* Argo renders extra stacked indicators behind grouped/filtered nodes. They are decorative,
+   have no click handler, and must not look like interactive resource cards. */
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__filtered-indicator {
+  display: none !important;
+  pointer-events: none !important;
 }
 
 html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node:hover {
