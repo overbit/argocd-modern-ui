@@ -5,16 +5,20 @@
   globalThis.__ARGOCD_MODERN_UI_CONTENT__ = true;
 
   const ROOT_ATTRIBUTE = 'data-argocd-modern';
+  const MODE_ATTRIBUTE = 'data-argocd-modern-mode';
+  const THEME_ATTRIBUTE = 'data-argocd-modern-theme';
   const ROUTE_ATTRIBUTE = 'data-argocd-modern-route';
   const FOCUS_ATTRIBUTE = 'data-argocd-modern-focus';
   const TOOL_HOST_ID = 'argocd-modern-ui-tools';
-  const DEFAULT_SETTINGS = {configuredUrl: '', enabled: true};
+  const FULL_UI_HOST_ID = 'argocd-modern-full-ui';
+  const DEFAULT_SETTINGS = {configuredUrl: '', uiMode: 'hybrid', theme: 'system', enabled: true};
 
   let toolHost = null;
   let lastHref = location.href;
   let routeObserver = null;
   let renderQueued = false;
   let focusIssues = false;
+  const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 
   function normalizeUrl(value) {
     const parsed = new URL(String(value || '').trim());
@@ -23,6 +27,20 @@
       pathname = pathname.replace(/\/+$/, '');
     }
     return `${parsed.origin}${pathname === '/' ? '' : pathname}`;
+  }
+
+  function normalizeMode(settings) {
+    if (['original', 'hybrid', 'full'].includes(settings.uiMode)) {
+      return settings.uiMode;
+    }
+    return settings.enabled === false ? 'original' : 'hybrid';
+  }
+
+  function resolveTheme(value) {
+    if (value === 'light' || value === 'dark') {
+      return value;
+    }
+    return systemTheme.matches ? 'dark' : 'light';
   }
 
   function isAllowedLocation(candidateUrl, configuredUrl) {
@@ -60,8 +78,8 @@
 
   function classifyRoute(configuredUrl) {
     const path = relativePath(configuredUrl);
-    if (path === '/' || path.startsWith('/applications')) return 'applications';
     if (path.startsWith('/applicationsets')) return 'applicationsets';
+    if (path === '/' || path.startsWith('/applications')) return 'applications';
     if (path.startsWith('/settings')) return 'settings';
     if (path.startsWith('/user-info')) return 'user-info';
     if (path.startsWith('/help')) return 'help';
@@ -78,19 +96,30 @@
     toolHost = null;
   }
 
-  function disableModernUi() {
+  function unmountFullUi() {
+    globalThis.__ARGOCD_FULL_UI__?.unmount?.();
+  }
+
+  function clearAttributes() {
     document.documentElement.removeAttribute(ROOT_ATTRIBUTE);
+    document.documentElement.removeAttribute(MODE_ATTRIBUTE);
+    document.documentElement.removeAttribute(THEME_ATTRIBUTE);
     document.documentElement.removeAttribute(ROUTE_ATTRIBUTE);
     document.documentElement.removeAttribute(FOCUS_ATTRIBUTE);
+  }
+
+  function disableModernUi() {
+    clearAttributes();
     focusIssues = false;
     removeToolHost();
+    unmountFullUi();
   }
 
   function versionText() {
     return document.querySelector('.sidebar__version')?.textContent?.trim() || '';
   }
 
-  function mountTools(configuredUrl) {
+  function mountTools(configuredUrl, theme) {
     if (!document.body) {
       return;
     }
@@ -104,66 +133,40 @@
       toolHost.attachShadow({mode: 'open'});
     }
 
+    const dark = theme === 'dark';
     const shadow = toolHost.shadowRoot;
     const showFocus = isApplicationDetail(configuredUrl);
     shadow.innerHTML = `
       <style>
         :host { all: initial; }
         .bar {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px;
-          border: 1px solid rgba(148, 163, 184, 0.28);
-          border-radius: 12px;
-          background: rgba(15, 23, 42, 0.94);
-          box-shadow: 0 14px 34px rgba(15, 23, 42, 0.24);
-          backdrop-filter: blur(14px);
-          font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          --bg:${dark ? '#0d1117' : '#ffffff'}; --border:${dark ? '#30363d' : '#d0d7de'}; --text:${dark ? '#f0f6fc' : '#1f2328'}; --muted:${dark ? '#8b949e' : '#59636e'}; --hover:${dark ? '#21262d' : '#f6f8fa'}; --accent:${dark ? '#2f81f7' : '#0969da'};
+          display:flex; align-items:center; gap:4px; padding:5px; border:1px solid var(--border); border-radius:7px; background:var(--bg); color:var(--text); box-shadow:0 8px 24px rgba(140,149,159,.2);
+          font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif;
         }
-        .brand {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          padding: 0 7px;
-          color: #cbd5e1;
-          font-size: 11px;
-          font-weight: 650;
-          letter-spacing: .01em;
-          white-space: nowrap;
-        }
-        .dot { width: 7px; height: 7px; border-radius: 999px; background: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,.12); }
-        button {
-          all: unset;
-          box-sizing: border-box;
-          cursor: pointer;
-          min-height: 30px;
-          padding: 0 10px;
-          border-radius: 8px;
-          color: #e2e8f0;
-          font-size: 11px;
-          font-weight: 650;
-          line-height: 30px;
-          white-space: nowrap;
-        }
-        button:hover { background: rgba(148,163,184,.14); }
-        button:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
-        button[data-active="true"] { background: rgba(96,165,250,.16); color: #bfdbfe; }
-        .original { color: #f8fafc; background: rgba(255,255,255,.08); }
-        @media (max-width: 640px) {
-          .brand { display: none; }
-          .bar { border-radius: 10px; }
-        }
+        .brand { display:flex; align-items:center; gap:7px; padding:0 7px; color:var(--muted); font-size:11px; font-weight:600; white-space:nowrap; }
+        .dot { width:7px; height:7px; border-radius:50%; background:#1a7f37; }
+        button { all:unset; box-sizing:border-box; cursor:pointer; min-height:30px; padding:0 9px; border-radius:6px; color:var(--text); font-size:11px; font-weight:600; line-height:30px; white-space:nowrap; }
+        button:hover { background:var(--hover); }
+        button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        button[data-active="true"] { background:${dark ? 'rgba(56,139,253,.15)' : '#ddf4ff'}; color:var(--accent); }
+        .full { border:1px solid var(--border); }
+        @media (max-width:640px) { .brand { display:none; } }
       </style>
       <div class="bar">
-        <div class="brand"><span class="dot"></span>Modern${versionText() ? ` / ${versionText()}` : ''}</div>
+        <div class="brand"><span class="dot"></span>Hybrid${versionText() ? ` · ${versionText()}` : ''}</div>
         ${showFocus ? `<button id="focus" data-active="${focusIssues}">${focusIssues ? 'Show all' : 'Focus issues'}</button>` : ''}
-        <button id="original" class="original">Original UI</button>
+        <button id="full" class="full">Full UI</button>
+        <button id="original">Original</button>
       </div>
     `;
 
     shadow.getElementById('original')?.addEventListener('click', () => {
-      void chrome.storage.local.set({enabled: false});
+      void chrome.storage.local.set({uiMode: 'original', enabled: false});
+    });
+
+    shadow.getElementById('full')?.addEventListener('click', () => {
+      void chrome.storage.local.set({uiMode: 'full', enabled: true});
     });
 
     shadow.getElementById('focus')?.addEventListener('click', () => {
@@ -173,29 +176,59 @@
       } else {
         document.documentElement.removeAttribute(FOCUS_ATTRIBUTE);
       }
-      mountTools(configuredUrl);
+      mountTools(configuredUrl, theme);
     });
   }
 
-  function applyModernUi(configuredUrl) {
+  function applyBaseAttributes(configuredUrl, mode, theme) {
     document.documentElement.setAttribute(ROOT_ATTRIBUTE, 'true');
+    document.documentElement.setAttribute(MODE_ATTRIBUTE, mode);
+    document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
     document.documentElement.setAttribute(ROUTE_ATTRIBUTE, classifyRoute(configuredUrl));
+  }
+
+  function applyHybridUi(configuredUrl, theme) {
+    unmountFullUi();
+    applyBaseAttributes(configuredUrl, 'hybrid', theme);
     if (focusIssues && isApplicationDetail(configuredUrl)) {
       document.documentElement.setAttribute(FOCUS_ATTRIBUTE, 'issues');
     } else {
       document.documentElement.removeAttribute(FOCUS_ATTRIBUTE);
       focusIssues = false;
     }
-    mountTools(configuredUrl);
+    mountTools(configuredUrl, theme);
+  }
+
+  async function applyFullUi(configuredUrl, theme) {
+    focusIssues = false;
+    document.documentElement.removeAttribute(FOCUS_ATTRIBUTE);
+    removeToolHost();
+    applyBaseAttributes(configuredUrl, 'full', theme);
+    if (!document.body || !globalThis.__ARGOCD_FULL_UI__?.mount) {
+      return;
+    }
+    await globalThis.__ARGOCD_FULL_UI__.mount({configuredUrl, theme});
   }
 
   async function render() {
     const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
-    if (!isAllowedLocation(location.href, settings.configuredUrl) || settings.enabled === false) {
+    if (!isAllowedLocation(location.href, settings.configuredUrl)) {
       disableModernUi();
       return;
     }
-    applyModernUi(settings.configuredUrl);
+
+    const mode = normalizeMode(settings);
+    if (mode === 'original') {
+      disableModernUi();
+      return;
+    }
+
+    const theme = resolveTheme(settings.theme);
+    if (mode === 'full') {
+      await applyFullUi(settings.configuredUrl, theme);
+    } else {
+      applyHybridUi(settings.configuredUrl, theme);
+    }
   }
 
   function queueRender() {
@@ -214,21 +247,21 @@
   }
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && (changes.enabled || changes.configuredUrl)) {
+    if (areaName === 'local' && (changes.enabled || changes.uiMode || changes.theme || changes.configuredUrl)) {
       queueRender();
     }
   });
 
   routeObserver = new MutationObserver(() => {
-    // Argo CD is a SPA. React mutations are a useful route-change signal, but
-    // log/terminal views can mutate continuously. Re-render only when the URL
-    // changed or when our isolated escape-hatch host was removed.
-    if (location.href !== lastHref || !toolHost?.isConnected) {
+    const mode = document.documentElement.getAttribute(MODE_ATTRIBUTE);
+    const expectedHostMissing = mode === 'full' ? !document.getElementById(FULL_UI_HOST_ID) : !toolHost?.isConnected;
+    if (location.href !== lastHref || expectedHostMissing) {
       queueRender();
     }
   });
   routeObserver.observe(document.documentElement, {childList: true, subtree: true});
 
+  systemTheme.addEventListener?.('change', queueRender);
   window.addEventListener('popstate', queueRender);
   window.addEventListener('hashchange', queueRender);
   window.addEventListener('pageshow', queueRender);
