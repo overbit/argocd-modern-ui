@@ -32,7 +32,7 @@ export async function syncRegistration() {
       id: CONTENT_SCRIPT_ID,
       matches: [pattern],
       js: ['full-ui.js', 'content.js'],
-      css: ['modern.css'],
+      css: ['modern.css', 'github-theme.css'],
       runAt: 'document_idle',
       persistAcrossSessions: true
     }
