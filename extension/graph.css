@@ -1,0 +1,181 @@
+/* n8n-inspired topology treatment for Argo CD's native Hybrid resource graph. */
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree {
+  --amu-graph-grid: color-mix(in srgb, var(--amu-text-muted) 18%, transparent);
+  --amu-graph-edge: color-mix(in srgb, var(--amu-text-muted) 54%, transparent);
+  --amu-graph-handle: color-mix(in srgb, var(--amu-text-muted) 78%, var(--amu-surface));
+  --amu-graph-shadow: 0 2px 7px rgba(31, 35, 40, 0.08), 0 10px 24px rgba(31, 35, 40, 0.05);
+  min-height: 560px;
+  border: 1px solid var(--amu-border);
+  border-radius: 12px;
+  background-color: var(--amu-bg) !important;
+  background-image: radial-gradient(circle, var(--amu-graph-grid) 1px, transparent 1.15px) !important;
+  background-size: 18px 18px !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amu-surface) 70%, transparent);
+  cursor: grab;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree:active {
+  cursor: grabbing;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__line {
+  z-index: 0 !important;
+  border-top: 2px solid var(--amu-graph-edge) !important;
+  opacity: 0.72;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__edge .application-resource-tree__line:last-child::after {
+  color: var(--amu-graph-edge) !important;
+  font-size: 9px !important;
+  top: -8px !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree--network .application-resource-tree__line {
+  height: 2px !important;
+  border-top: 0 !important;
+  background-size: 18px 2px, 0 0, 0 0, 0 0 !important;
+  opacity: 0.86;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node {
+  z-index: 1;
+  overflow: visible;
+  border: 1px solid var(--amu-border-strong) !important;
+  border-radius: 10px !important;
+  background: var(--amu-surface) !important;
+  box-shadow: var(--amu-graph-shadow) !important;
+  color: var(--amu-text) !important;
+  transition: border-color 130ms ease, box-shadow 130ms ease, transform 130ms ease, opacity 130ms ease, filter 130ms ease !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node::before,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--amu-surface);
+  border-radius: 50%;
+  background: var(--amu-graph-handle);
+  box-shadow: 0 0 0 1px var(--amu-border-strong);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node::before { left: -6px; }
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node::after { right: -6px; }
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__filtered-indicator::before,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__filtered-indicator::after {
+  display: none;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node:hover {
+  border-color: color-mix(in srgb, var(--amu-accent) 52%, var(--amu-border-strong)) !important;
+  box-shadow: 0 4px 10px rgba(31, 35, 40, 0.12), 0 14px 30px rgba(31, 35, 40, 0.08) !important;
+  transform: translateY(-1px);
+  filter: none !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node.active {
+  border-color: var(--amu-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amu-accent) 16%, transparent), var(--amu-graph-shadow) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node:has(i[title="Degraded"]),
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node:has(i[title="Missing"]) {
+  border-color: color-mix(in srgb, var(--amu-danger) 70%, var(--amu-border-strong)) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node:has(i[title="Progressing"]),
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node:has(i[title^="OutOfSync"]) {
+  border-color: color-mix(in srgb, var(--amu-warning) 58%, var(--amu-border-strong)) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node-kind-icon--big {
+  left: 7px !important;
+  top: 4px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border: 1px solid var(--amu-border) !important;
+  border-radius: 10px !important;
+  background: var(--amu-surface-subtle) !important;
+  color: var(--amu-text-muted) !important;
+  box-shadow: none !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node-kind-icon--big img {
+  max-width: 27px;
+  max-height: 27px;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node-kind-icon {
+  color: var(--amu-text-muted) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node-title {
+  color: var(--amu-text) !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.01em;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node-kind {
+  color: var(--amu-text-muted) !important;
+  font-size: 10px !important;
+  font-weight: 600;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node-status-icon {
+  color: var(--amu-text-muted);
+  font-size: 11px !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node-label {
+  border-color: var(--amu-border) !important;
+  border-radius: 999px !important;
+  background: var(--amu-surface-subtle) !important;
+  color: var(--amu-text-muted) !important;
+  padding: 1px 6px !important;
+  font-size: 9px !important;
+  font-weight: 600;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node--orphaned {
+  border-style: dashed !important;
+  background: color-mix(in srgb, var(--amu-surface-subtle) 84%, transparent) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node--applicationset {
+  border-style: dashed !important;
+  border-color: color-mix(in srgb, var(--amu-accent) 52%, var(--amu-border-strong)) !important;
+  opacity: 0.9 !important;
+  background: color-mix(in srgb, var(--amu-accent-soft) 52%, var(--amu-surface)) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node--lower-section__pod-group__pod-container__pods {
+  border: 1px solid var(--amu-border);
+  border-radius: 9px !important;
+  background: var(--amu-surface-subtle) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node--lower-section__pod-group__pod {
+  border-radius: 7px !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 12%, transparent);
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"][data-argocd-modern-theme="dark"] .application-resource-tree {
+  --amu-graph-grid: color-mix(in srgb, #8b949e 19%, transparent);
+  --amu-graph-edge: color-mix(in srgb, #8b949e 58%, transparent);
+  --amu-graph-shadow: 0 2px 8px rgba(1, 4, 9, 0.52), 0 14px 30px rgba(1, 4, 9, 0.34);
+}
+
+@media (max-width: 900px) {
+  html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree {
+    min-height: 460px;
+    border-radius: 9px;
+    background-size: 16px 16px !important;
+  }
+}
