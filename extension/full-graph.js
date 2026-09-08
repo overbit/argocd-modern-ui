@@ -19,11 +19,15 @@
 
     const styles = globalThis.__ARGOCD_FULL_GRAPH_STYLES__ || '';
 
+    const isRenderableResource = node => Boolean(
+      node && String(node.kind || '').trim() && String(node.name || '').trim()
+    );
+
     function resourceNodes() {
       return [
         ...(state.tree?.nodes || []).map(node => ({...node, __orphaned: false})),
         ...(state.tree?.orphanedNodes || []).map(node => ({...node, __orphaned: true}))
-      ];
+      ].filter(isRenderableResource);
     }
 
     function buildTopology() {
