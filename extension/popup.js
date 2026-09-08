@@ -60,7 +60,7 @@ async function injectIntoActiveTabIfEligible() {
 
   try {
     await chrome.scripting.insertCSS({target: {tabId: activeTab.id}, files: ['modern.css', 'github-theme.css', 'graph.css']});
-    await chrome.scripting.executeScript({target: {tabId: activeTab.id}, files: ['full-ui.js', 'content.js']});
+    await chrome.scripting.executeScript({target: {tabId: activeTab.id}, files: ['full-graph-styles.js', 'full-graph.js', 'full-ui.js', 'content.js']});
   } catch (error) {
     console.debug('[Argo CD Modern UI] Immediate injection skipped.', error);
   }
