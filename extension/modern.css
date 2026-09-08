@@ -1,0 +1,613 @@
+/*
+ * Argo CD Modern UI
+ *
+ * Every rule is gated by data-argocd-modern="true". Disabling the extension
+ * removes that single attribute, immediately restoring Argo CD's native UI.
+ */
+
+html[data-argocd-modern="true"] {
+  --amu-font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --amu-sidebar-width: 244px;
+  --amu-sidebar-collapsed-width: 64px;
+  --amu-radius-xs: 6px;
+  --amu-radius-sm: 8px;
+  --amu-radius-md: 12px;
+  --amu-radius-lg: 16px;
+  --amu-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 4px rgba(15, 23, 42, 0.04);
+  --amu-shadow-md: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --amu-ease: 150ms ease;
+}
+
+html[data-argocd-modern="true"] .theme-light {
+  --amu-bg: #f6f7f9;
+  --amu-surface: #ffffff;
+  --amu-surface-raised: #ffffff;
+  --amu-surface-subtle: #f8fafc;
+  --amu-surface-hover: #f1f5f9;
+  --amu-border: #e2e8f0;
+  --amu-border-strong: #cbd5e1;
+  --amu-text: #0f172a;
+  --amu-text-muted: #64748b;
+  --amu-text-faint: #94a3b8;
+  --amu-accent: #2563eb;
+  --amu-accent-hover: #1d4ed8;
+  --amu-accent-soft: #eff6ff;
+  --amu-success: #059669;
+  --amu-warning: #d97706;
+  --amu-danger: #dc2626;
+  --amu-sidebar: #111827;
+  --amu-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --amu-sidebar-active: rgba(96, 165, 250, 0.14);
+  --amu-sidebar-text: #cbd5e1;
+}
+
+html[data-argocd-modern="true"] .theme-dark {
+  --amu-bg: #0b0f17;
+  --amu-surface: #111827;
+  --amu-surface-raised: #151e2e;
+  --amu-surface-subtle: #0f172a;
+  --amu-surface-hover: #1e293b;
+  --amu-border: #253248;
+  --amu-border-strong: #334155;
+  --amu-text: #f1f5f9;
+  --amu-text-muted: #94a3b8;
+  --amu-text-faint: #64748b;
+  --amu-accent: #60a5fa;
+  --amu-accent-hover: #93c5fd;
+  --amu-accent-soft: rgba(96, 165, 250, 0.12);
+  --amu-success: #34d399;
+  --amu-warning: #fbbf24;
+  --amu-danger: #fb7185;
+  --amu-sidebar: #080c13;
+  --amu-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --amu-sidebar-active: rgba(96, 165, 250, 0.14);
+  --amu-sidebar-text: #cbd5e1;
+}
+
+html[data-argocd-modern="true"],
+html[data-argocd-modern="true"] body,
+html[data-argocd-modern="true"] button,
+html[data-argocd-modern="true"] input,
+html[data-argocd-modern="true"] select,
+html[data-argocd-modern="true"] textarea {
+  font-family: var(--amu-font) !important;
+}
+
+html[data-argocd-modern="true"] body {
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+
+html[data-argocd-modern="true"] .theme-light,
+html[data-argocd-modern="true"] .theme-dark,
+html[data-argocd-modern="true"] .cd-layout,
+html[data-argocd-modern="true"] .custom-styles {
+  background: var(--amu-bg) !important;
+  color: var(--amu-text) !important;
+}
+
+/* Sidebar: preserve Argo CD behavior, replace only presentation. */
+html[data-argocd-modern="true"] .sidebar {
+  width: var(--amu-sidebar-width) !important;
+  min-width: var(--amu-sidebar-width) !important;
+  padding: 12px 10px !important;
+  background: var(--amu-sidebar) !important;
+  border-right: 1px solid rgba(148, 163, 184, 0.13);
+  overflow-x: hidden !important;
+  z-index: 20 !important;
+}
+
+html[data-argocd-modern="true"] .sidebar__container {
+  padding: 0 !important;
+}
+
+html[data-argocd-modern="true"] .sidebar__logo {
+  min-height: 56px;
+  margin: 0 0 14px !important;
+  padding: 7px 8px 12px;
+  flex-direction: row-reverse !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+html[data-argocd-modern="true"] .sidebar__logo__character {
+  width: 34px !important;
+  height: 34px !important;
+  object-fit: contain;
+  opacity: 0.96;
+}
+
+html[data-argocd-modern="true"] .sidebar__logo__text-logo {
+  height: 25px !important;
+  max-width: 116px;
+  object-fit: contain;
+  opacity: 0.96;
+}
+
+html[data-argocd-modern="true"] .sidebar__logo-container {
+  margin: 0 0 0 10px !important;
+  color: #94a3b8 !important;
+  font-size: 10px !important;
+}
+
+html[data-argocd-modern="true"] .sidebar__version {
+  width: 116px !important;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #64748b;
+}
+
+html[data-argocd-modern="true"] .sidebar__collapse-button {
+  margin: 0 0 0 auto !important;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--amu-radius-sm);
+  line-height: 28px;
+  color: #64748b !important;
+  transition: background var(--amu-ease), color var(--amu-ease);
+}
+
+html[data-argocd-modern="true"] .sidebar__collapse-button:hover {
+  background: var(--amu-sidebar-hover);
+  color: #e2e8f0 !important;
+}
+
+html[data-argocd-modern="true"] .sidebar__nav-item {
+  height: 40px !important;
+  margin: 3px 0;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: var(--amu-sidebar-text) !important;
+  font-size: 13px !important;
+  font-weight: 560 !important;
+  line-height: 40px !important;
+  transition: background var(--amu-ease), color var(--amu-ease), transform var(--amu-ease);
+}
+
+html[data-argocd-modern="true"] .sidebar__nav-item:hover {
+  background: var(--amu-sidebar-hover);
+  color: #f8fafc !important;
+}
+
+html[data-argocd-modern="true"] .sidebar__nav-item--active {
+  background: var(--amu-sidebar-active);
+  color: #eff6ff !important;
+  box-shadow: inset 2px 0 0 #60a5fa;
+}
+
+html[data-argocd-modern="true"] .sidebar__nav-item i,
+html[data-argocd-modern="true"] .sidebar__nav-item i.fa {
+  width: 30px !important;
+  min-width: 30px !important;
+  padding-right: 0 !important;
+  margin: 0 8px 0 0 !important;
+  font-size: 17px !important;
+  color: #94a3b8 !important;
+  vertical-align: -1px;
+}
+
+html[data-argocd-modern="true"] .sidebar__nav-item--active i,
+html[data-argocd-modern="true"] .sidebar__nav-item--active i.fa {
+  color: #93c5fd !important;
+}
+
+html[data-argocd-modern="true"] .sidebar--collapsed {
+  width: var(--amu-sidebar-collapsed-width) !important;
+  min-width: var(--amu-sidebar-collapsed-width) !important;
+  padding: 10px 7px !important;
+}
+
+html[data-argocd-modern="true"] .sidebar--collapsed .sidebar__logo {
+  padding: 6px 0 10px !important;
+  margin: 0 0 10px !important;
+}
+
+html[data-argocd-modern="true"] .sidebar--collapsed .sidebar__nav-item {
+  width: 48px;
+  padding: 0 9px;
+}
+
+html[data-argocd-modern="true"] .sidebar--collapsed .sidebar__nav-item i,
+html[data-argocd-modern="true"] .sidebar--collapsed .sidebar__nav-item i.fa {
+  margin: 0 !important;
+  text-align: center;
+}
+
+/* Argo's page offsets are tied to its native 230/60px sidebar values. */
+html[data-argocd-modern="true"] .page-wrapper,
+html[data-argocd-modern="true"] .sb-page-wrapper {
+  padding-left: var(--amu-sidebar-width) !important;
+}
+
+html[data-argocd-modern="true"] .sb-page-wrapper__sidebar-collapsed {
+  padding-left: var(--amu-sidebar-collapsed-width) !important;
+}
+
+html[data-argocd-modern="true"] .page__top-bar,
+html[data-argocd-modern="true"] .flex-top-bar {
+  left: var(--amu-sidebar-width) !important;
+}
+
+html[data-argocd-modern="true"] .sb-page-wrapper__sidebar-collapsed .page__top-bar,
+html[data-argocd-modern="true"] .sb-page-wrapper__sidebar-collapsed .flex-top-bar {
+  left: var(--amu-sidebar-collapsed-width) !important;
+}
+
+html[data-argocd-modern="true"] .application-details__status-panel {
+  left: var(--amu-sidebar-width) !important;
+}
+
+html[data-argocd-modern="true"] .sb-page-wrapper__sidebar-collapsed .application-details__status-panel {
+  left: var(--amu-sidebar-collapsed-width) !important;
+}
+
+/* Top bars and page chrome. */
+html[data-argocd-modern="true"] .page__top-bar,
+html[data-argocd-modern="true"] .flex-top-bar,
+html[data-argocd-modern="true"] .top-bar {
+  background: color-mix(in srgb, var(--amu-surface) 94%, transparent) !important;
+  border-bottom: 1px solid var(--amu-border) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(14px);
+}
+
+html[data-argocd-modern="true"] .flex-top-bar,
+html[data-argocd-modern="true"] .page__top-bar {
+  min-height: 52px;
+}
+
+html[data-argocd-modern="true"] h1,
+html[data-argocd-modern="true"] h2,
+html[data-argocd-modern="true"] h3,
+html[data-argocd-modern="true"] h4,
+html[data-argocd-modern="true"] h5 {
+  color: var(--amu-text) !important;
+  font-family: var(--amu-font) !important;
+  letter-spacing: -0.025em;
+}
+
+html[data-argocd-modern="true"] h1 { font-size: 22px !important; font-weight: 700 !important; }
+html[data-argocd-modern="true"] h2 { font-size: 18px !important; font-weight: 680 !important; }
+html[data-argocd-modern="true"] h3 { font-size: 15px !important; font-weight: 660 !important; }
+
+html[data-argocd-modern="true"] a {
+  color: var(--amu-accent);
+}
+
+html[data-argocd-modern="true"] a:hover {
+  color: var(--amu-accent-hover);
+}
+
+/* Cards, panels and tables. */
+html[data-argocd-modern="true"] .white-box,
+html[data-argocd-modern="true"] .argo-table-list,
+html[data-argocd-modern="true"] .application-details__status-panel,
+html[data-argocd-modern="true"] .application-details__status-panel .row,
+html[data-argocd-modern="true"] .settings-overview__card,
+html[data-argocd-modern="true"] .panel {
+  background: var(--amu-surface) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+  box-shadow: var(--amu-shadow-sm) !important;
+}
+
+html[data-argocd-modern="true"] .white-box {
+  border: 1px solid var(--amu-border) !important;
+  border-radius: var(--amu-radius-md) !important;
+}
+
+html[data-argocd-modern="true"] .white-box__details,
+html[data-argocd-modern="true"] .white-box__details-row,
+html[data-argocd-modern="true"] .white-box__details-row__key {
+  color: var(--amu-text-muted) !important;
+}
+
+html[data-argocd-modern="true"] .argo-table-list {
+  overflow: hidden;
+  border: 1px solid var(--amu-border) !important;
+  border-radius: var(--amu-radius-md) !important;
+}
+
+html[data-argocd-modern="true"] .argo-table-list__header {
+  background: var(--amu-surface-subtle) !important;
+  color: var(--amu-text-muted) !important;
+  border-bottom: 1px solid var(--amu-border) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+html[data-argocd-modern="true"] .argo-table-list__row {
+  background: var(--amu-surface) !important;
+  color: var(--amu-text) !important;
+  border-bottom: 1px solid var(--amu-border) !important;
+  transition: background var(--amu-ease), box-shadow var(--amu-ease);
+}
+
+html[data-argocd-modern="true"] .argo-table-list__row:last-child {
+  border-bottom: 0 !important;
+}
+
+html[data-argocd-modern="true"] .argo-table-list__row:hover {
+  background: var(--amu-surface-hover) !important;
+}
+
+html[data-argocd-modern="true"] .applications-list {
+  padding: 18px !important;
+}
+
+html[data-argocd-modern="true"] .applications-list__entry {
+  position: relative;
+}
+
+html[data-argocd-modern="true"] .applications-list__entry::before {
+  content: "";
+  position: absolute;
+  inset: 7px auto 7px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: transparent;
+  pointer-events: none;
+}
+
+html[data-argocd-modern="true"] .applications-list__entry--health-Degraded::before,
+html[data-argocd-modern="true"] .applications-list__entry--health-Missing::before {
+  background: var(--amu-danger);
+}
+
+html[data-argocd-modern="true"] .applications-list__entry--health-Progressing::before,
+html[data-argocd-modern="true"] .applications-list__entry--health-Suspended::before {
+  background: var(--amu-warning);
+}
+
+html[data-argocd-modern="true"] .applications-list__entry--health-Healthy::before {
+  background: var(--amu-success);
+  opacity: 0.55;
+}
+
+html[data-argocd-modern="true"] .applications-list__title {
+  color: var(--amu-text) !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.012em;
+}
+
+html[data-argocd-modern="true"] .applications-list__summary {
+  border-radius: var(--amu-radius-md) !important;
+}
+
+/* Form controls. */
+html[data-argocd-modern="true"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-argocd-modern="true"] textarea,
+html[data-argocd-modern="true"] select,
+html[data-argocd-modern="true"] .argo-field,
+html[data-argocd-modern="true"] .argo-select,
+html[data-argocd-modern="true"] .select__control {
+  min-height: 36px;
+  background: var(--amu-surface) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border-strong) !important;
+  border-radius: var(--amu-radius-sm) !important;
+  box-shadow: none !important;
+}
+
+html[data-argocd-modern="true"] input::placeholder,
+html[data-argocd-modern="true"] textarea::placeholder {
+  color: var(--amu-text-faint) !important;
+}
+
+html[data-argocd-modern="true"] input:focus,
+html[data-argocd-modern="true"] textarea:focus,
+html[data-argocd-modern="true"] select:focus,
+html[data-argocd-modern="true"] .select__control--is-focused {
+  border-color: var(--amu-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amu-accent) 16%, transparent) !important;
+  outline: none !important;
+}
+
+html[data-argocd-modern="true"] label,
+html[data-argocd-modern="true"] .argo-form-row label {
+  color: var(--amu-text-muted) !important;
+  font-size: 12px;
+  font-weight: 620;
+}
+
+/* Buttons. Preserve semantic Argo classes while modernizing shape and density. */
+html[data-argocd-modern="true"] button,
+html[data-argocd-modern="true"] .argo-button,
+html[data-argocd-modern="true"] .argo-button--base,
+html[data-argocd-modern="true"] .argo-button--base-o {
+  min-height: 34px;
+  border-radius: var(--amu-radius-sm) !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+  box-shadow: none !important;
+  transition: transform var(--amu-ease), background var(--amu-ease), border-color var(--amu-ease), box-shadow var(--amu-ease);
+}
+
+html[data-argocd-modern="true"] button:hover:not(:disabled),
+html[data-argocd-modern="true"] .argo-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+html[data-argocd-modern="true"] button:focus-visible,
+html[data-argocd-modern="true"] .argo-button:focus-visible,
+html[data-argocd-modern="true"] a:focus-visible {
+  outline: 2px solid var(--amu-accent) !important;
+  outline-offset: 2px !important;
+}
+
+html[data-argocd-modern="true"] .argo-button--base,
+html[data-argocd-modern="true"] .argo-button--base:not(.argo-button--base-o) {
+  background: var(--amu-accent) !important;
+  border-color: var(--amu-accent) !important;
+  color: #fff !important;
+}
+
+html[data-argocd-modern="true"] .argo-button--base-o {
+  background: var(--amu-surface) !important;
+  border-color: var(--amu-border-strong) !important;
+  color: var(--amu-text) !important;
+}
+
+/* Filters and menus. */
+html[data-argocd-modern="true"] .filters-group,
+html[data-argocd-modern="true"] .filter,
+html[data-argocd-modern="true"] .menu,
+html[data-argocd-modern="true"] .dropdown__menu,
+html[data-argocd-modern="true"] .select__menu {
+  background: var(--amu-surface-raised) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+  border-radius: var(--amu-radius-md) !important;
+  box-shadow: var(--amu-shadow-md) !important;
+}
+
+html[data-argocd-modern="true"] .filter__header,
+html[data-argocd-modern="true"] .filters-group__title {
+  color: var(--amu-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+/* Application detail: make operational status the strongest information layer. */
+html[data-argocd-modern="true"][data-argocd-modern-route="applications"] .application-details {
+  background: var(--amu-bg) !important;
+}
+
+html[data-argocd-modern="true"] .application-details__status-panel {
+  border-bottom: 1px solid var(--amu-border) !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.045) !important;
+}
+
+html[data-argocd-modern="true"] .application-details__status-panel .row {
+  box-shadow: none !important;
+}
+
+html[data-argocd-modern="true"] .application-details__status-panel a,
+html[data-argocd-modern="true"] .application-details__status-panel button {
+  font-weight: 650;
+}
+
+html[data-argocd-modern="true"] .application-resource-tree__node,
+html[data-argocd-modern="true"] .application-resource-list .argo-table-list__row,
+html[data-argocd-modern="true"] .resources-table__row {
+  transition: opacity var(--amu-ease), filter var(--amu-ease), box-shadow var(--amu-ease), transform var(--amu-ease);
+}
+
+html[data-argocd-modern="true"] .application-resource-tree__node {
+  border-radius: var(--amu-radius-sm) !important;
+}
+
+html[data-argocd-modern="true"] .application-resource-tree__node:hover {
+  filter: brightness(1.02);
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-focus="issues"] .application-resource-tree__node:has(i[title="Healthy"]):has(i[title="Synced"]),
+html[data-argocd-modern="true"][data-argocd-modern-focus="issues"] .application-resource-list .argo-table-list__row:has(i[title="Healthy"]):has(i[title="Synced"]),
+html[data-argocd-modern="true"][data-argocd-modern-focus="issues"] .resources-table__row:has(i[title="Healthy"]):has(i[title="Synced"]) {
+  opacity: 0.22;
+  filter: grayscale(0.8);
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-focus="issues"] .application-resource-tree__node:has(i[title="Degraded"]),
+html[data-argocd-modern="true"][data-argocd-modern-focus="issues"] .application-resource-tree__node:has(i[title^="OutOfSync"]),
+html[data-argocd-modern="true"][data-argocd-modern-focus="issues"] .application-resource-list .argo-table-list__row:has(i[title="Degraded"]),
+html[data-argocd-modern="true"][data-argocd-modern-focus="issues"] .application-resource-list .argo-table-list__row:has(i[title^="OutOfSync"]) {
+  opacity: 1;
+  filter: none;
+  box-shadow: inset 3px 0 0 var(--amu-danger) !important;
+}
+
+/* Modals, drawers and tabs. */
+html[data-argocd-modern="true"] .argo-modal,
+html[data-argocd-modern="true"] .argo-modal__content,
+html[data-argocd-modern="true"] .sliding-panel,
+html[data-argocd-modern="true"] .sliding-panel__body {
+  background: var(--amu-surface-raised) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+}
+
+html[data-argocd-modern="true"] .argo-modal__content,
+html[data-argocd-modern="true"] .sliding-panel {
+  border-radius: var(--amu-radius-lg) !important;
+  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-argocd-modern="true"] .tabs__nav,
+html[data-argocd-modern="true"] .tab-list {
+  border-color: var(--amu-border) !important;
+}
+
+html[data-argocd-modern="true"] .tabs__nav a,
+html[data-argocd-modern="true"] .tab-list__item {
+  color: var(--amu-text-muted) !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
+html[data-argocd-modern="true"] .tabs__nav a.active,
+html[data-argocd-modern="true"] .tab-list__item--selected {
+  color: var(--amu-accent) !important;
+}
+
+/* Code, diffs and logs stay dense and readable. */
+html[data-argocd-modern="true"] pre,
+html[data-argocd-modern="true"] code,
+html[data-argocd-modern="true"] .logs-viewer,
+html[data-argocd-modern="true"] .code-editor,
+html[data-argocd-modern="true"] .monaco-editor {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
+}
+
+html[data-argocd-modern="true"] pre,
+html[data-argocd-modern="true"] .logs-viewer {
+  border-radius: var(--amu-radius-sm) !important;
+}
+
+/* Settings screen cards should read like a structured admin surface. */
+html[data-argocd-modern="true"][data-argocd-modern-route="settings"] .settings-overview__card,
+html[data-argocd-modern="true"][data-argocd-modern-route="settings"] .white-box {
+  border-radius: var(--amu-radius-md) !important;
+  border: 1px solid var(--amu-border) !important;
+}
+
+/* Notifications. */
+html[data-argocd-modern="true"] .notifications__notification,
+html[data-argocd-modern="true"] .notification {
+  border-radius: var(--amu-radius-md) !important;
+  box-shadow: var(--amu-shadow-md) !important;
+}
+
+/* Keep dangerous actions visually dangerous. */
+html[data-argocd-modern="true"] .argo-button--negative,
+html[data-argocd-modern="true"] .argo-button--negative-o,
+html[data-argocd-modern="true"] button[class*="danger"],
+html[data-argocd-modern="true"] button[class*="delete"] {
+  border-color: color-mix(in srgb, var(--amu-danger) 55%, var(--amu-border)) !important;
+}
+
+/* Accessibility and smaller displays. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-argocd-modern="true"] *,
+  html[data-argocd-modern="true"] *::before,
+  html[data-argocd-modern="true"] *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html[data-argocd-modern="true"] {
+    --amu-sidebar-width: 220px;
+  }
+
+  html[data-argocd-modern="true"] .applications-list {
+    padding: 10px !important;
+  }
+}

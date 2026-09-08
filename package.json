@@ -1,0 +1,14 @@
+{
+  "name": "argocd-modern-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check extension/background.js && node --check extension/content.js && node --check extension/popup.js && node --check extension/settings.js && node --test",
+    "test": "node --test",
+    "package": "rm -f argocd-modern-ui.zip && cd extension && zip -qr ../argocd-modern-ui.zip ."
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

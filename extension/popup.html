@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Argo CD Modern UI</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div class="mark" aria-hidden="true">A</div>
+        <div>
+          <h1>Argo CD Modern UI</h1>
+          <p>Modern UX, native Argo CD underneath.</p>
+        </div>
+      </header>
+
+      <section class="card" aria-labelledby="instance-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="instance-heading">Argo CD instance</h2>
+            <p>The extension runs only inside this URL.</p>
+          </div>
+          <span id="site-status" class="status">Not configured</span>
+        </div>
+
+        <label for="argocd-url">URL</label>
+        <div class="url-row">
+          <input id="argocd-url" type="url" inputmode="url" autocomplete="url" spellcheck="false" placeholder="https://argocd.example.com" />
+          <button id="save" class="button primary" type="button">Save</button>
+        </div>
+        <p id="url-help" class="help">A path prefix is supported, for example https://example.com/argocd.</p>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="card mode-card" aria-labelledby="mode-heading">
+        <div>
+          <h2 id="mode-heading">Modern interface</h2>
+          <p>Turn this off at any time to restore the original Argo CD UI.</p>
+        </div>
+        <label class="switch" aria-label="Toggle modern interface">
+          <input id="enabled" type="checkbox" />
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </section>
+
+      <section class="safety">
+        <strong>Safe by design</strong>
+        <p>No Argo CD token or password is stored. The extension only requests access to the configured origin.</p>
+      </section>
+
+      <footer>
+        <span>Targets Argo CD 3.5.x</span>
+        <span>Manifest V3</span>
+      </footer>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

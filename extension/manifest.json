@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Argo CD Modern UI",
+  "version": "0.1.0",
+  "description": "A safer, modern UX layer for Argo CD with an instant original-UI fallback.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Argo CD Modern UI"
+  },
+  "options_ui": {
+    "page": "popup.html",
+    "open_in_tab": true
+  }
+}
