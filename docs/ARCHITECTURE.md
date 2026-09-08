@@ -2,33 +2,60 @@
 
 ## Goals
 
-1. Restyle Argo CD 3.5.x without replacing its authenticated application runtime.
+1. Offer Original, Hybrid, and Full UI modes for Argo CD 3.5.x.
 2. Request access only to the user-configured Argo CD origin.
-3. Keep all native Argo CD actions and routes underneath the modern presentation layer.
-4. Make rollback to the original UI immediate and independent of Argo CD's own controls.
+3. Keep authentication inside the existing Argo CD browser session.
+4. Make rollback to Hybrid or Original UI immediate.
+5. Avoid recreating privileged/destructive workflows until they can preserve Argo CD's RBAC and confirmation semantics.
 
-## Why hybrid instead of a replacement SPA
+## Runtime modes
 
-A full replacement UI would duplicate Argo CD API clients, RBAC behavior, extension points, routing, dialogs, streaming logs, terminals, and version-specific edge cases. The hybrid layer deliberately leaves those components in place and changes presentation plus a small number of non-destructive UX affordances.
+### Original
 
-This keeps the failure mode simple: remove `data-argocd-modern="true"` and Argo CD returns to its native presentation.
+`content.js` removes all redesign attributes, the Hybrid floating controls, and the Full replacement host.
 
-## Runtime flow
+### Hybrid
 
 ```text
-Extension popup
-  -> user enters Argo CD URL
-  -> request optional host permission for that origin
-  -> store URL locally
-  -> service worker registers content.js + modern.css only for that origin
-
-Argo CD page
-  -> content.js verifies the configured path prefix
-  -> if enabled: set data-argocd-modern="true"
-  -> modern.css restyles native Argo CD components
-  -> floating Shadow DOM controls provide "Original UI"
-  -> if disabled: remove root attributes and controls
+Argo CD native React application
+  + data-argocd-modern="true"
+  + data-argocd-modern-mode="hybrid"
+  + explicit extension theme attribute
+  + modern.css + github-theme.css
+  + isolated Shadow DOM mode/focus controls
 ```
+
+Native components continue to own all application behavior.
+
+### Full
+
+```text
+Argo CD authenticated page/session
+  -> full-ui.js mounts fixed Shadow DOM shell
+  -> native .cd-layout is hidden, not destroyed
+  -> Full UI requests same-origin /api/v1 data with browser credentials
+  -> independent navigation/rendering inside extension shadow root
+  -> Hybrid / Original controls remain available
+```
+
+The native Argo CD runtime remains loaded underneath the replacement shell, so switching mode does not require reconstructing authentication state.
+
+## Full UI API surface
+
+The initial replacement shell uses:
+
+- `GET /api/v1/applications`
+- `GET /api/v1/applications/{name}`
+- `GET /api/v1/applications/{name}/resource-tree`
+- `POST /api/v1/applications/{name}/sync`
+- `GET /api/v1/applicationsets`
+- `GET /api/v1/projects`
+- `GET /api/v1/clusters`
+- `GET /api/v1/repositories`
+
+Application namespace is forwarded through `appNamespace` using the same query/body placement as Argo CD 3.5.2's native applications service.
+
+Administrative writes such as repository credential changes, project deletion, and cluster modification remain in Hybrid mode for now. This is deliberate failure containment rather than an invisible partial implementation.
 
 ## URL scoping
 
@@ -36,18 +63,28 @@ Chrome host permissions are origin-scoped. If the configured URL is `https://exa
 
 Changing the configured origin removes the old host permission after the new permission has been granted.
 
-## Storage and authentication
+## Storage and migration
 
-The extension uses `chrome.storage.local`, not sync storage. It stores only:
+`chrome.storage.local` stores only:
 
 - configured Argo CD URL
-- modern UI enabled/disabled state
+- `uiMode`: `original | hybrid | full`
+- `theme`: `system | light | dark`
 
-Argo CD authentication remains entirely inside the existing Argo CD browser session. No token, cookie, username, or password is copied into extension storage.
+Version 0.1 used `enabled: boolean`. Version 0.2 migrates it at read time:
 
-## Argo CD 3.5 compatibility points
+- `enabled: false` -> `original`
+- `enabled: true` -> `hybrid`
 
-The initial compatibility layer targets selectors confirmed in Argo CD v3.5.2 source:
+Writes retain the old flag as a compatibility hint, but the explicit mode is authoritative.
+
+## Theme resolution
+
+`System` is resolved in `content.js` using `prefers-color-scheme`. The resolved `light` or `dark` value is written to `data-argocd-modern-theme` and passed into Full mode. This makes extension theme selection independent of Argo CD's own `.theme-light` / `.theme-dark` state.
+
+## Argo CD 3.5 Hybrid compatibility points
+
+The Hybrid layer targets selectors confirmed in Argo CD v3.5.2 source:
 
 - `ui/src/app/sidebar/sidebar.tsx` / `sidebar.scss`
 - `ui/src/app/shared/components/page/page.scss`
@@ -56,17 +93,14 @@ The initial compatibility layer targets selectors confirmed in Argo CD v3.5.2 so
 - `ui/src/app/applications/components/application-resource-tree/*`
 - status icons from `ui/src/app/applications/components/utils.tsx`
 
-The UI stylesheet is intentionally additive and root-gated. No Argo CD bundle is patched.
-
-## Focus issues
-
-On application-detail routes, the extension exposes **Focus issues**. It dims resource nodes/rows only when Argo CD itself marks them both `Healthy` and `Synced`. Degraded or OutOfSync resources remain fully emphasized. The control changes presentation only; it never changes Argo CD resource data or sync behavior.
+The UI stylesheet is additive and root-gated. No Argo CD bundle is patched.
 
 ## Failure containment
 
-There are two independent escape paths:
+Three escape paths exist:
 
-1. Extension popup -> disable **Modern interface**.
-2. In-page floating control -> **Original UI**.
+1. Extension popup -> **Original**.
+2. Hybrid floating control -> **Original** or **Full UI**.
+3. Full sidebar -> **Hybrid UI** or **Original UI**.
 
-Both write `enabled: false` to local extension storage. The already-injected CSS remains harmless because every rule requires the root modern attribute.
+The Full host is removed on mode change and the native layout becomes visible again. The Hybrid stylesheet remains harmless in Original mode because every rule requires the root redesign attribute.
