@@ -12,7 +12,7 @@ Argo CD is left untouched. No redesign attributes or replacement shell remain mo
 
 ### Hybrid
 
-Restyles Argo CD's native React UI while retaining its routing, authentication, RBAC, dialogs, logs, terminals, extensions, and actions underneath. Application details also expose **Focus issues** to de-emphasize Healthy + Synced resources.
+Restyles Argo CD's native React UI while retaining its routing, authentication, RBAC, dialogs, logs, terminals, extensions, and actions underneath. The native resource DAG gets an n8n-inspired dotted canvas, rounded resource nodes, connection handles, clearer edges, issue-aware borders, and improved dark-mode contrast. Application details also expose **Focus issues** to de-emphasize Healthy + Synced resources.
 
 ### Full
 
@@ -20,7 +20,9 @@ Mounts an independent Shadow-DOM application over Argo CD and reads from the aut
 
 - application dashboard with health/sync overview and search
 - ApplicationSets overview
-- application details and resource-health list
+- application details with an interactive left-to-right resource topology plus List fallback
+- drag-to-pan, wheel/trackpad pan, Ctrl/Command + wheel zoom, zoom buttons, and fit-to-view
+- Focus issues, selected-neighbor highlighting, and a resource details drawer
 - application sync action
 - projects, clusters, and repositories settings overview
 - one-click **Hybrid UI** and **Original UI** escape paths
@@ -83,6 +85,7 @@ extension/
   full-ui.js         Independent Full replacement UI and Argo CD REST client
   modern.css         Root-gated Hybrid redesign
   github-theme.css   GitHub-inspired Hybrid light/dark override layer
+  graph.css          n8n-inspired Hybrid resource graph treatment
   popup.html         Instance, mode, and theme settings
   popup.js
   popup.css
