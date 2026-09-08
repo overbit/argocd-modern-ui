@@ -2,11 +2,12 @@ import {getOriginPattern, getSettings, isUrlWithinConfiguredBase, normalizeArgoU
 
 const urlInput = document.getElementById('argocd-url');
 const saveButton = document.getElementById('save');
-const enabledToggle = document.getElementById('enabled');
 const status = document.getElementById('site-status');
 const message = document.getElementById('message');
+const modeInputs = [...document.querySelectorAll('input[name="ui-mode"]')];
+const themeInputs = [...document.querySelectorAll('input[name="theme"]')];
 
-let currentSettings = {configuredUrl: '', enabled: true};
+let currentSettings = {configuredUrl: '', uiMode: 'hybrid', theme: 'system'};
 let activeTab = null;
 
 function setMessage(text, kind = '') {
@@ -19,10 +20,15 @@ async function getActiveTab() {
   return tabs[0] || null;
 }
 
+function selectedLabel(value) {
+  return value === 'full' ? 'Full UI' : value === 'hybrid' ? 'Hybrid UI' : 'Original UI';
+}
+
 function updateStatus() {
   const configured = Boolean(currentSettings.configuredUrl);
-  enabledToggle.disabled = !configured;
-  enabledToggle.checked = configured && currentSettings.enabled;
+  [...modeInputs, ...themeInputs].forEach(input => { input.disabled = !configured; });
+  modeInputs.forEach(input => { input.checked = input.value === currentSettings.uiMode; });
+  themeInputs.forEach(input => { input.checked = input.value === currentSettings.theme; });
 
   if (!configured) {
     status.textContent = 'Not configured';
@@ -31,8 +37,8 @@ function updateStatus() {
   }
 
   if (activeTab?.url && isUrlWithinConfiguredBase(activeTab.url, currentSettings.configuredUrl)) {
-    status.textContent = currentSettings.enabled ? 'Active here' : 'Original UI';
-    status.className = currentSettings.enabled ? 'status active' : 'status inactive';
+    status.textContent = selectedLabel(currentSettings.uiMode);
+    status.className = currentSettings.uiMode === 'original' ? 'status inactive' : 'status active';
     return;
   }
 
@@ -54,10 +60,8 @@ async function injectIntoActiveTabIfEligible() {
 
   try {
     await chrome.scripting.insertCSS({target: {tabId: activeTab.id}, files: ['modern.css']});
-    await chrome.scripting.executeScript({target: {tabId: activeTab.id}, files: ['content.js']});
+    await chrome.scripting.executeScript({target: {tabId: activeTab.id}, files: ['full-ui.js', 'content.js']});
   } catch (error) {
-    // Some restricted browser pages cannot be scripted. The configured Argo CD page
-    // will still receive the script on its next navigation through registration.
     console.debug('[Argo CD Modern UI] Immediate injection skipped.', error);
   }
 }
@@ -87,7 +91,7 @@ saveButton.addEventListener('click', async () => {
 
     await injectIntoActiveTabIfEligible();
     updateStatus();
-    setMessage('Saved. Modern UI is limited to this Argo CD URL.', 'success');
+    setMessage('Saved. Access is limited to this Argo CD URL.', 'success');
   } catch (error) {
     setMessage(String(error?.message || error), 'error');
   } finally {
@@ -95,19 +99,23 @@ saveButton.addEventListener('click', async () => {
   }
 });
 
-enabledToggle.addEventListener('change', async () => {
-  if (!currentSettings.configuredUrl) {
-    enabledToggle.checked = false;
-    return;
-  }
-
-  const enabled = enabledToggle.checked;
-  await setSettings({enabled});
-  currentSettings = {...currentSettings, enabled};
+modeInputs.forEach(input => input.addEventListener('change', async () => {
+  if (!input.checked || !currentSettings.configuredUrl) return;
+  await setSettings({uiMode: input.value});
+  currentSettings = {...currentSettings, uiMode: input.value};
   await injectIntoActiveTabIfEligible();
   updateStatus();
-  setMessage(enabled ? 'Modern UI enabled.' : 'Original Argo CD UI restored.', 'success');
-});
+  setMessage(`${selectedLabel(input.value)} selected.`, 'success');
+}));
+
+themeInputs.forEach(input => input.addEventListener('change', async () => {
+  if (!input.checked || !currentSettings.configuredUrl) return;
+  await setSettings({theme: input.value});
+  currentSettings = {...currentSettings, theme: input.value};
+  await injectIntoActiveTabIfEligible();
+  updateStatus();
+  setMessage(`${input.value[0].toUpperCase()}${input.value.slice(1)} theme selected.`, 'success');
+}));
 
 async function init() {
   [currentSettings, activeTab] = await Promise.all([getSettings(), getActiveTab()]);
