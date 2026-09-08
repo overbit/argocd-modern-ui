@@ -1,7 +1,22 @@
+export const UI_MODES = Object.freeze(['original', 'hybrid', 'full']);
+export const THEMES = Object.freeze(['system', 'light', 'dark']);
+
 export const DEFAULT_SETTINGS = Object.freeze({
   configuredUrl: '',
-  enabled: true
+  uiMode: 'hybrid',
+  theme: 'system'
 });
+
+export function normalizeUiMode(value, legacyEnabled = true) {
+  if (UI_MODES.includes(value)) {
+    return value;
+  }
+  return legacyEnabled === false ? 'original' : 'hybrid';
+}
+
+export function normalizeTheme(value) {
+  return THEMES.includes(value) ? value : 'system';
+}
 
 export function normalizeArgoUrl(value) {
   const raw = String(value ?? '').trim();
@@ -62,13 +77,22 @@ export function isUrlWithinConfiguredBase(candidateUrl, configuredUrl) {
 }
 
 export async function getSettings() {
-  const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
+  const stored = await chrome.storage.local.get({...DEFAULT_SETTINGS, enabled: true});
   return {
     configuredUrl: stored.configuredUrl || '',
-    enabled: stored.enabled !== false
+    uiMode: normalizeUiMode(stored.uiMode, stored.enabled),
+    theme: normalizeTheme(stored.theme)
   };
 }
 
 export async function setSettings(next) {
-  await chrome.storage.local.set(next);
+  const normalized = {...next};
+  if (Object.prototype.hasOwnProperty.call(normalized, 'uiMode')) {
+    normalized.uiMode = normalizeUiMode(normalized.uiMode);
+    normalized.enabled = normalized.uiMode !== 'original';
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, 'theme')) {
+    normalized.theme = normalizeTheme(normalized.theme);
+  }
+  await chrome.storage.local.set(normalized);
 }
