@@ -1,10 +1,10 @@
 {
   "name": "argocd-modern-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check extension/background.js && node --check extension/content.js && node --check extension/popup.js && node --check extension/settings.js && node --test",
+    "check": "node --check extension/background.js && node --check extension/full-ui.js && node --check extension/content.js && node --check extension/popup.js && node --check extension/settings.js && node --test",
     "test": "node --test",
     "package": "rm -f argocd-modern-ui.zip && cd extension && zip -qr ../argocd-modern-ui.zip ."
   },
