@@ -12,7 +12,7 @@
         <div class="mark" aria-hidden="true">A</div>
         <div>
           <h1>Argo CD Modern UI</h1>
-          <p>Modern UX, native Argo CD underneath.</p>
+          <p>GitHub-inspired Argo CD UX with safe fallbacks.</p>
         </div>
       </header>
 
@@ -30,30 +30,36 @@
           <input id="argocd-url" type="url" inputmode="url" autocomplete="url" spellcheck="false" placeholder="https://argocd.example.com" />
           <button id="save" class="button primary" type="button">Save</button>
         </div>
-        <p id="url-help" class="help">A path prefix is supported, for example https://example.com/argocd.</p>
+        <p class="help">Path prefixes are supported, for example https://example.com/argocd.</p>
         <p id="message" class="message" role="status" aria-live="polite"></p>
       </section>
 
-      <section class="card mode-card" aria-labelledby="mode-heading">
-        <div>
-          <h2 id="mode-heading">Modern interface</h2>
-          <p>Turn this off at any time to restore the original Argo CD UI.</p>
+      <section class="card" aria-labelledby="mode-heading">
+        <div class="section-heading compact">
+          <div><h2 id="mode-heading">Interface mode</h2><p>Switch instantly if a redesigned view causes trouble.</p></div>
         </div>
-        <label class="switch" aria-label="Toggle modern interface">
-          <input id="enabled" type="checkbox" />
-          <span class="track"><span class="thumb"></span></span>
-        </label>
+        <div class="segmented" role="radiogroup" aria-label="Interface mode">
+          <label><input type="radio" name="ui-mode" value="original" /><span>Original<small>Unmodified Argo CD</small></span></label>
+          <label><input type="radio" name="ui-mode" value="hybrid" /><span>Hybrid<small>Restyled native UI</small></span></label>
+          <label><input type="radio" name="ui-mode" value="full" /><span>Full<small>Replacement shell</small></span></label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="theme-heading">
+        <div class="section-heading compact"><div><h2 id="theme-heading">Theme</h2><p>Applied to Hybrid and Full modes.</p></div></div>
+        <div class="segmented theme" role="radiogroup" aria-label="Theme">
+          <label><input type="radio" name="theme" value="system" /><span>System</span></label>
+          <label><input type="radio" name="theme" value="light" /><span>Light</span></label>
+          <label><input type="radio" name="theme" value="dark" /><span>Dark</span></label>
+        </div>
       </section>
 
       <section class="safety">
         <strong>Safe by design</strong>
-        <p>No Argo CD token or password is stored. The extension only requests access to the configured origin.</p>
+        <p>No Argo CD token or password is stored. Full mode uses the existing authenticated browser session and the same configured origin.</p>
       </section>
 
-      <footer>
-        <span>Targets Argo CD 3.5.x</span>
-        <span>Manifest V3</span>
-      </footer>
+      <footer><span>Targets Argo CD 3.5.x</span><span>v0.2.0 · Manifest V3</span></footer>
     </main>
     <script type="module" src="popup.js"></script>
   </body>
