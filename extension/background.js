@@ -6,7 +6,6 @@ async function unregisterContentScript() {
   try {
     await chrome.scripting.unregisterContentScripts({ids: [CONTENT_SCRIPT_ID]});
   } catch (error) {
-    // Chrome throws when the registration does not exist. That is already the desired state.
     if (!String(error?.message || error).toLowerCase().includes('nonexistent')) {
       console.warn('[Argo CD Modern UI] Unable to remove old content script registration.', error);
     }
@@ -15,7 +14,6 @@ async function unregisterContentScript() {
 
 export async function syncRegistration() {
   await unregisterContentScript();
-
   const {configuredUrl} = await getSettings();
   if (!configuredUrl) return;
 
@@ -27,7 +25,19 @@ export async function syncRegistration() {
     {
       id: CONTENT_SCRIPT_ID,
       matches: [pattern],
-      js: ['full-graph-styles.js', 'full-graph.js', 'full-direct.js', 'full-controls.js', 'full-changeflow.js', 'full-ui.js', 'full-route.js', 'content.js'],
+      js: [
+        'full-graph-styles.js',
+        'full-graph.js',
+        'full-graph-base.js',
+        'full-direct.js',
+        'full-direct-patch.js',
+        'full-graph-direct-adapter.js',
+        'full-controls.js',
+        'full-changeflow.js',
+        'full-ui.js',
+        'full-route.js',
+        'content.js'
+      ],
       css: ['modern.css', 'github-theme.css', 'graph.css'],
       runAt: 'document_idle',
       persistAcrossSessions: true
