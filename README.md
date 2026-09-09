@@ -29,9 +29,13 @@ Current Full UI includes:
 
 - application dashboard with health/sync overview and search
 - ApplicationSets overview
+- **diagram-first application details**: direct application URLs and application selections open the custom topology instead of leaving the user on a resource list
 - interactive application topology with Tree, Network, Pods, and List resource views
 - drag-to-pan, wheel/trackpad pan, Ctrl/Command + wheel zoom, zoom buttons, and fit-to-view
 - Focus issues and selected-neighbor highlighting
+- **visual deploy preview** that compares desired and live state and marks resources as Create, Update, or Remove before sync
+- dependency-path highlighting for resources affected by the deploy plan
+- live diagram tracking while deploy, resource sync, delete, reset/restart-style custom actions, and other resource actions run; affected nodes update as Argo CD reports changes
 - interactive resource inspector with summary, live/desired manifests, diff, events, logs, resource actions, resource sync, and delete flows where supported by Argo CD's API
 - application sync action
 - **Controls & details** tab for the complete upstream application detail experience without leaving Full mode
@@ -58,6 +62,7 @@ The visual system is deliberately GitHub-inspired, with n8n-inspired topology in
 - system UI font stack
 - dotted topology canvas, connection ports, pan/zoom, selectable nodes, and contextual inspectors
 - operational health/sync state remains visually dominant
+- action overlays use the graph itself to explain operational change: green Create, amber Update, red Remove, animated in-progress paths, and settled resource state after the action
 
 ## URL and authentication safety
 
@@ -100,7 +105,9 @@ extension/
   settings.js            URL, mode, theme, and local settings helpers
   content.js             Mode activation, theme resolution, route awareness, fallbacks
   full-ui.js             Full replacement shell and top-level routing
+  full-route.js          Makes direct application routes open the custom topology first
   full-native.js         In-Full native parity surface and graph parity adapter
+  full-changeflow.js     Deploy preview and live action-change visualization
   full-graph.js          Interactive Full topology and resource inspector
   full-graph-styles.js   Full topology/inspector presentation
   modern.css             Root-gated Hybrid redesign
@@ -114,6 +121,7 @@ tests/
   settings.test.js       URL/path/settings migration tests
   graph.test.js          Graph placeholder/resource validation
   parity.test.js         Full parity routing and injection tests
+  changeflow.test.js     Diagram-first and operational-change visualization tests
 
 docs/
   ARCHITECTURE.md
