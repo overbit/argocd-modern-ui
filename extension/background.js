@@ -39,7 +39,7 @@ export async function syncRegistration() {
         'full-route.js',
         'content.js'
       ],
-      css: ['modern.css', 'github-theme.css', 'graph.css'],
+      css: ['modern.css', 'github-theme.css', 'graph.css', 'dark-fixes.css'],
       runAt: 'document_idle',
       persistAcrossSessions: true
     }
