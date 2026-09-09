@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check extension/background.js && node --check extension/full-graph-styles.js && node --check extension/full-graph.js && node --check extension/full-direct.js && node --check extension/full-controls.js && node --check extension/full-changeflow.js && node --check extension/full-ui.js && node --check extension/full-route.js && node --check extension/content.js && node --check extension/popup.js && node --check extension/settings.js && node --test",
+    "check": "node --check extension/background.js && node --check extension/full-graph-styles.js && node --check extension/full-graph.js && node --check extension/full-graph-base.js && node --check extension/full-direct.js && node --check extension/full-direct-patch.js && node --check extension/full-graph-direct-adapter.js && node --check extension/full-controls.js && node --check extension/full-changeflow.js && node --check extension/full-ui.js && node --check extension/full-route.js && node --check extension/content.js && node --check extension/popup.js && node --check extension/settings.js && node --test",
     "test": "node --test",
     "package": "rm -f argocd-modern-ui.zip && cd extension && zip -qr ../argocd-modern-ui.zip ."
   },
