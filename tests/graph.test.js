@@ -4,13 +4,14 @@ import fs from 'node:fs';
 
 await import('../extension/full-graph.js');
 
-const createGraph = tree => globalThis.__ARGOCD_FULL_GRAPH_FACTORY__({
-  state: {tree},
+const tone = value => ['Healthy', 'Synced'].includes(value) ? 'ok' : ['Degraded', 'Missing', 'Failed'].includes(value) ? 'bad' : ['Progressing', 'OutOfSync'].includes(value) ? 'warn' : 'muted';
+const createGraph = (tree, selected = {metadata: {name: 'demo', namespace: 'argocd'}, status: {health: {status: 'Healthy'}, sync: {status: 'Synced'}, resources: []}}) => globalThis.__ARGOCD_FULL_GRAPH_FACTORY__({
+  state: {tree, selected},
   esc: value => String(value ?? ''),
   badge: value => String(value ?? ''),
-  tone: () => 'muted',
-  health: () => 'Unknown',
-  sync: () => 'Unknown',
+  tone,
+  health: app => app?.status?.health?.status || 'Unknown',
+  sync: app => app?.status?.sync?.status || 'Unknown',
   rerender: () => {}
 });
 
@@ -35,6 +36,52 @@ test('full topology ignores resource entries without a Kubernetes identity', () 
       ['Service', 'api', true]
     ]
   );
+});
+
+test('full tree groups same-kind inactive leaf siblings while keeping active branches visible', () => {
+  const healthy = {health: {status: 'Healthy'}, status: 'Synced'};
+  const graph = createGraph({
+    nodes: [
+      {uid: 'dep', kind: 'Deployment', name: 'api', namespace: 'default', ...healthy},
+      {uid: 'rs-old-1', kind: 'ReplicaSet', name: 'api-111', namespace: 'default', parentRefs: [{uid: 'dep'}], ...healthy},
+      {uid: 'rs-old-2', kind: 'ReplicaSet', name: 'api-222', namespace: 'default', parentRefs: [{uid: 'dep'}], ...healthy},
+      {uid: 'rs-active', kind: 'ReplicaSet', name: 'api-333', namespace: 'default', parentRefs: [{uid: 'dep'}], ...healthy},
+      {uid: 'pod-active', kind: 'Pod', name: 'api-333-abc', namespace: 'default', parentRefs: [{uid: 'rs-active'}], ...healthy}
+    ],
+    orphanedNodes: []
+  });
+
+  const markup = graph.content();
+  assert.match(markup, /data-group=/);
+  assert.match(markup, />2 ReplicaSets</);
+  assert.doesNotMatch(markup, /api-111/);
+  assert.doesNotMatch(markup, /api-222/);
+  assert.match(markup, /api-333/);
+  assert.match(markup, /api-333-abc/);
+});
+
+test('full tree does not hide resources that need attention inside compact groups', () => {
+  const graph = createGraph({
+    nodes: [
+      {uid: 'dep', kind: 'Deployment', name: 'api', namespace: 'default', health: {status: 'Healthy'}, status: 'Synced'},
+      {uid: 'rs-healthy', kind: 'ReplicaSet', name: 'api-healthy', namespace: 'default', parentRefs: [{uid: 'dep'}], health: {status: 'Healthy'}, status: 'Synced'},
+      {uid: 'rs-bad', kind: 'ReplicaSet', name: 'api-bad', namespace: 'default', parentRefs: [{uid: 'dep'}], health: {status: 'Degraded'}, status: 'Synced'}
+    ],
+    orphanedNodes: []
+  });
+
+  const markup = graph.content();
+  assert.doesNotMatch(markup, /data-group=/);
+  assert.match(markup, /api-healthy/);
+  assert.match(markup, /api-bad/);
+});
+
+test('full compact groups are expandable and can be collapsed again', () => {
+  const source = fs.readFileSync(new URL('../extension/full-graph.js', import.meta.url), 'utf8');
+  assert.match(source, /data-group=/);
+  assert.match(source, /view\.expandedGroups\.add/);
+  assert.match(source, /data-collapse-groups/);
+  assert.match(source, /view\.expandedGroups\.clear\(\)/);
 });
 
 test('hybrid topology hides Argo decorative and empty indicator nodes', () => {
