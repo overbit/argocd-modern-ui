@@ -68,10 +68,16 @@ html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-r
 html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node::after { right: -6px; }
 
 /* Argo renders extra stacked indicators behind grouped/filtered nodes. They are decorative,
-   have no click handler, and must not look like interactive resource cards. */
-html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__filtered-indicator {
+   have no click handler, and must never look like interactive resource cards. The second
+   selector is a defensive fallback for installed Argo builds that emit the same empty
+   indicator without preserving the filtered-indicator class. Real resource nodes always
+   contain node content and a title. */
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__filtered-indicator,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node:not([title]):empty {
   display: none !important;
+  visibility: hidden !important;
   pointer-events: none !important;
+  box-shadow: none !important;
 }
 
 html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .application-resource-tree__node:hover {
