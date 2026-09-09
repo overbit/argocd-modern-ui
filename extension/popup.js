@@ -55,7 +55,7 @@ async function injectIntoActiveTabIfEligible() {
   if (!activeTab?.id || !activeTab.url || !isUrlWithinConfiguredBase(activeTab.url, currentSettings.configuredUrl)) return;
 
   try {
-    await chrome.scripting.insertCSS({target: {tabId: activeTab.id}, files: ['modern.css', 'github-theme.css', 'graph.css']});
+    await chrome.scripting.insertCSS({target: {tabId: activeTab.id}, files: ['modern.css', 'github-theme.css', 'graph.css', 'dark-fixes.css']});
     await chrome.scripting.executeScript({
       target: {tabId: activeTab.id},
       files: [
