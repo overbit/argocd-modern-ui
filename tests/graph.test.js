@@ -84,6 +84,35 @@ test('full compact groups are expandable and can be collapsed again', () => {
   assert.match(source, /view\.expandedGroups\.clear\(\)/);
 });
 
+test('full logs discover every Deployment, ReplicaSet and Pod container', () => {
+  const graph = createGraph({nodes: [], orphanedNodes: []});
+  const workload = {
+    live: {
+      spec: {
+        template: {
+          spec: {
+            initContainers: [{name: 'init'}],
+            containers: [{name: 'api'}, {name: 'sidecar'}],
+            ephemeralContainers: [{name: 'debug'}]
+          }
+        }
+      }
+    }
+  };
+  assert.deepEqual(graph.containerNames({kind: 'Deployment'}, workload), ['init', 'api', 'sidecar', 'debug']);
+  assert.deepEqual(graph.containerNames({kind: 'ReplicaSet'}, workload), ['init', 'api', 'sidecar', 'debug']);
+  assert.deepEqual(graph.containerNames({kind: 'Pod'}, {live: {spec: {containers: [{name: 'pod-main'}, {name: 'pod-sidecar'}]}}}), ['pod-main', 'pod-sidecar']);
+});
+
+test('full logs expose all-container workload aggregation and parameterized resource actions', () => {
+  const source = fs.readFileSync(new URL('../extension/full-graph.js', import.meta.url), 'utf8');
+  assert.match(source, /All containers/);
+  assert.match(source, /node\.kind === 'Pod' \? \{podName: node\.name\} : \{group: node\.group \|\| '', kind: node\.kind, resourceName: node\.name\}/);
+  assert.match(source, /Promise\.allSettled\(requests\)/);
+  assert.match(source, /resourceActionParameters/);
+  assert.doesNotMatch(source, /Opens native parameter form/);
+});
+
 test('hybrid topology hides Argo decorative and empty indicator nodes', () => {
   const css = fs.readFileSync(new URL('../extension/graph.css', import.meta.url), 'utf8');
   assert.match(css, /application-resource-tree__filtered-indicator/);
