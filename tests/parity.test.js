@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 await import('../extension/full-graph.js');
+await import('../extension/full-graph-base.js');
 await import('../extension/full-direct.js');
+await import('../extension/full-direct-patch.js');
+await import('../extension/full-graph-direct-adapter.js');
 
 const createDirect = baseUrl => globalThis.__ARGOCD_FULL_DIRECT_FACTORY__({
   state: {baseUrl, root: null, theme: 'dark'},
@@ -44,7 +47,7 @@ test('full direct control module includes CRUD, logs and terminal implementation
   assert.doesNotMatch(source, /<iframe/i);
 });
 
-test('full graph merges application resource status by Kubernetes identity rather than UID', () => {
+test('full graph merges application resource status by Kubernetes identity without stringifying graph data', () => {
   const state = {
     baseUrl: 'https://argocd.example.com',
     root: null,
@@ -68,16 +71,19 @@ test('full graph merges application resource status by Kubernetes identity rathe
     sync: () => 'Unknown',
     rerender: () => {}
   });
-  const [node] = graph.resourceNodes();
+  const nodes = graph.resourceNodes();
+  assert.ok(Array.isArray(nodes));
+  const [node] = nodes;
   assert.equal(node.status, 'OutOfSync');
   assert.equal(node.health.status, 'Degraded');
 });
 
-test('runtime loads direct controls before controls and the Full shell in both injection paths', () => {
+test('runtime loads base graph, direct controls and corrected adapter before the Full shell', () => {
   const background = fs.readFileSync(new URL('../extension/background.js', import.meta.url), 'utf8');
   const popup = fs.readFileSync(new URL('../extension/popup.js', import.meta.url), 'utf8');
+  const order = /full-graph\.js['"],\s*['"]full-graph-base\.js['"],\s*['"]full-direct\.js['"],\s*['"]full-direct-patch\.js['"],\s*['"]full-graph-direct-adapter\.js['"],\s*['"]full-controls\.js['"],\s*['"]full-changeflow\.js['"],\s*['"]full-ui\.js['"],\s*['"]full-route\.js['"],\s*['"]content\.js/;
   for (const source of [background, popup]) {
-    assert.match(source, /full-graph\.js['"],\s*['"]full-direct\.js['"],\s*['"]full-controls\.js['"],\s*['"]full-changeflow\.js['"],\s*['"]full-ui\.js['"],\s*['"]full-route\.js['"],\s*['"]content\.js/);
+    assert.match(source, order);
     assert.doesNotMatch(source, /full-native\.js/);
   }
 });
@@ -94,4 +100,11 @@ test('full UI exposes direct application controls without a native fallback tab 
   assert.match(fullUi, /Controls & spec/);
   assert.doesNotMatch(fullUi, /Native fallback/);
   assert.doesNotMatch(fullUi, /<iframe/i);
+});
+
+test('direct repository route patch repairs both repository create routes', () => {
+  const patch = fs.readFileSync(new URL('../extension/full-direct-patch.js', import.meta.url), 'utf8');
+  assert.match(patch, /settings\/write-repos/);
+  assert.match(patch, /settings\/repos/);
+  assert.match(patch, /\?create=1/);
 });
