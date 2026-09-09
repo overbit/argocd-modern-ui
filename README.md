@@ -33,6 +33,7 @@ Current Full UI includes:
 - interactive application topology with Tree, Network, Pods, and List resource views
 - drag-to-pan, wheel/trackpad pan, Ctrl/Command + wheel zoom, zoom buttons, and fit-to-view
 - Focus issues and selected-neighbor highlighting
+- **native-style compact grouping** in Tree view: same-kind inactive leaf siblings are collapsed into one aggregate node, while active branches and resources needing attention stay visible; click a group to expand it and use **Collapse groups** to compact the tree again
 - **visual deploy preview** that compares desired and live state and marks resources as Create, Update, or Remove before sync
 - dependency-path highlighting for resources affected by the deploy plan
 - live diagram tracking while deploy, resource sync, delete, reset/restart-style custom actions, and other resource actions run; affected nodes update as Argo CD reports changes
@@ -119,7 +120,7 @@ extension/
 
 tests/
   settings.test.js       URL/path/settings migration tests
-  graph.test.js          Graph placeholder/resource validation
+  graph.test.js          Graph placeholder, grouping, and resource validation
   parity.test.js         Full parity routing and injection tests
   changeflow.test.js     Diagram-first and operational-change visualization tests
 
