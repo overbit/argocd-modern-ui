@@ -17,21 +17,17 @@ export async function syncRegistration() {
   await unregisterContentScript();
 
   const {configuredUrl} = await getSettings();
-  if (!configuredUrl) {
-    return;
-  }
+  if (!configuredUrl) return;
 
   const pattern = getOriginPattern(configuredUrl);
   const allowed = await chrome.permissions.contains({origins: [pattern]});
-  if (!allowed) {
-    return;
-  }
+  if (!allowed) return;
 
   await chrome.scripting.registerContentScripts([
     {
       id: CONTENT_SCRIPT_ID,
       matches: [pattern],
-      js: ['full-graph-styles.js', 'full-graph.js', 'full-native.js', 'full-controls.js', 'full-changeflow.js', 'full-ui.js', 'full-route.js', 'content.js'],
+      js: ['full-graph-styles.js', 'full-graph.js', 'full-direct.js', 'full-controls.js', 'full-changeflow.js', 'full-ui.js', 'full-route.js', 'content.js'],
       css: ['modern.css', 'github-theme.css', 'graph.css'],
       runAt: 'document_idle',
       persistAcrossSessions: true
@@ -39,27 +35,13 @@ export async function syncRegistration() {
   ]);
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  void syncRegistration();
-});
-
-chrome.runtime.onStartup.addListener(() => {
-  void syncRegistration();
-});
-
+chrome.runtime.onInstalled.addListener(() => { void syncRegistration(); });
+chrome.runtime.onStartup.addListener(() => { void syncRegistration(); });
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && Object.prototype.hasOwnProperty.call(changes, 'configuredUrl')) {
-    void syncRegistration();
-  }
+  if (areaName === 'local' && Object.prototype.hasOwnProperty.call(changes, 'configuredUrl')) void syncRegistration();
 });
-
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== 'sync-registration') {
-    return false;
-  }
-
-  syncRegistration()
-    .then(() => sendResponse({ok: true}))
-    .catch(error => sendResponse({ok: false, error: String(error?.message || error)}));
+  if (message?.type !== 'sync-registration') return false;
+  syncRegistration().then(() => sendResponse({ok: true})).catch(error => sendResponse({ok: false, error: String(error?.message || error)}));
   return true;
 });
