@@ -34,6 +34,19 @@
     const pluralKind = kind => String(kind || 'Resource').endsWith('s') ? String(kind || 'Resource') : `${kind || 'Resource'}s`;
     const compactGroupKey = (parentKey, kind) => `__group__|${parentKey}|${kind}`;
 
+    function normalizeJson(value) {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed || !((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']')))) return value;
+        try { return normalizeJson(JSON.parse(trimmed)); } catch { return value; }
+      }
+      if (Array.isArray(value)) return value.map(normalizeJson);
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalizeJson(item)]));
+      }
+      return value;
+    }
+
     function resourceNodes() {
       const statusByKey = new Map((state.selected?.status?.resources || []).map(resource => [refKey(resource), resource]));
       return [
@@ -63,7 +76,6 @@
     }
 
     function compactTree(resources, edges) {
-      const byKey = new Map(resources.map(node => [node.__key, node]));
       const incoming = new Map(resources.map(node => [node.__key, []]));
       const outgoing = new Map(resources.map(node => [node.__key, 0]));
       edges.forEach(edge => {
@@ -222,16 +234,54 @@
       return `/applications/${encodeURIComponent(appNamespace())}/${encodeURIComponent(appName())}?node=${encodeURIComponent(`${fullName}/0`)}&tab=${encodeURIComponent(tab)}`;
     }
 
-    function parseSseLogs(text) {
-      return String(text || '').split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => {
+    function logEntries(text, container) {
+      return String(text || '').split(/\r?\n/).filter(line => line.startsWith('data:')).map((line, order) => {
+        const raw = line.slice(5).trim();
         try {
-          const parsed = JSON.parse(line.slice(5).trim());
+          const parsed = JSON.parse(raw);
           const entry = parsed?.result || parsed;
-          return entry?.content || entry?.message || '';
+          if (!entry || entry.last) return null;
+          return {
+            content: entry.content || entry.message || '',
+            podName: entry.podName || '',
+            timeStamp: entry.timeStamp || entry.timestamp || entry.timeStampStr || '',
+            container,
+            order
+          };
         } catch {
-          return line.slice(5).trim();
+          return {content: raw, podName: '', timeStamp: '', container, order};
         }
-      }).filter(Boolean).join('\n');
+      }).filter(entry => entry && entry.content !== '');
+    }
+
+    function workloadPodSpec(node, manifest) {
+      const value = normalizeJson(manifest);
+      if (!value || typeof value !== 'object') return null;
+      if (node.kind === 'Pod') return value.spec || null;
+      if (node.kind === 'CronJob') return value.spec?.jobTemplate?.spec?.template?.spec || null;
+      return value.spec?.template?.spec || null;
+    }
+
+    function containerNames(node, data) {
+      const manifest = data?.live || data?.managed?.liveState || data?.managed?.targetState;
+      const spec = workloadPodSpec(node, manifest);
+      if (!spec) return [];
+      const names = [...(spec.initContainers || []), ...(spec.containers || []), ...(spec.ephemeralContainers || [])].map(container => container?.name).filter(Boolean);
+      return [...new Set(names)];
+    }
+
+    function formatLogEntries(entries, node, showSources) {
+      const ordered = entries.map((entry, index) => ({...entry, __index: index})).sort((a, b) => {
+        const at = Date.parse(a.timeStamp || '');
+        const bt = Date.parse(b.timeStamp || '');
+        if (Number.isFinite(at) && Number.isFinite(bt) && at !== bt) return at - bt;
+        return a.__index - b.__index;
+      });
+      return ordered.map(entry => {
+        const source = entry.podName || node.name;
+        const prefix = showSources ? `[${source}/${entry.container || 'container'}] ` : '';
+        return `${prefix}${entry.content}`;
+      }).join('\n');
     }
 
     async function loadInspector(node, force = false) {
@@ -248,27 +298,35 @@
       });
       const managedQuery = qs({appNamespace: appNamespace(), ...id});
       const eventsQuery = qs({appNamespace: appNamespace(), resourceUID: node.uid || '', resourceNamespace: node.namespace || '', resourceName: node.name});
-      const actionsQuery = qs({appNamespace: appNamespace(), namespace: node.namespace || '', resourceName: node.name, version: node.version || '', kind: node.kind, group: node.group || ''});
+      const resourceMetaQuery = qs({appNamespace: appNamespace(), namespace: node.namespace || '', resourceName: node.name, version: node.version || '', kind: node.kind, group: node.group || ''});
       const results = await Promise.allSettled([
         api(`/api/v1/applications/${encodeURIComponent(appName())}/resource?${resourceQuery}`),
         api(`/api/v1/applications/${encodeURIComponent(appName())}/managed-resources?${managedQuery}`),
         api(`/api/v1/applications/${encodeURIComponent(appName())}/events?${eventsQuery}`),
-        api(`/api/v1/applications/${encodeURIComponent(appName())}/resource/actions?${actionsQuery}`)
+        api(`/api/v1/applications/${encodeURIComponent(appName())}/resource/actions?${resourceMetaQuery}`),
+        api(`/api/v1/applications/${encodeURIComponent(appName())}/resource/links?${resourceMetaQuery}`)
       ]);
       const unwrap = (result, fallback) => result.status === 'fulfilled' ? result.value : fallback;
-      const live = unwrap(results[0], null);
-      const managedResponse = unwrap(results[1], {items: []});
+      const liveResponse = normalizeJson(unwrap(results[0], null));
+      const live = liveResponse?.manifest !== undefined ? normalizeJson(liveResponse.manifest) : liveResponse;
+      const managedResponse = normalizeJson(unwrap(results[1], {items: []}));
       const managedItems = Array.isArray(managedResponse) ? managedResponse : managedResponse?.items || [];
       const managed = managedItems.find(item => item?.name === node.name && item?.kind === node.kind && (item?.namespace || '') === (node.namespace || '')) || managedItems[0] || null;
       const eventsResponse = unwrap(results[2], {items: []});
       const events = Array.isArray(eventsResponse) ? eventsResponse : eventsResponse?.items || [];
       const actionsResponse = unwrap(results[3], {actions: []});
       const actions = Array.isArray(actionsResponse) ? actionsResponse : actionsResponse?.actions || [];
+      const linksResponse = unwrap(results[4], {items: []});
+      const links = Array.isArray(linksResponse) ? linksResponse : linksResponse?.items || [];
       const firstError = results.find(result => result.status === 'rejected');
-      inspector.set(key, {
-        loaded: true, loading: false, live, managed, events, actions,
-        error: firstError ? String(firstError.reason?.message || firstError.reason || '') : '', logs: current?.logs || null
-      });
+      const next = {
+        loaded: true, loading: false, live, managed, events, actions, links,
+        error: firstError ? String(firstError.reason?.message || firstError.reason || '') : '',
+        logs: current?.logs || null,
+        logContainer: current?.logContainer || '*'
+      };
+      next.containers = containerNames(node, next);
+      inspector.set(key, next);
       rerender();
     }
 
@@ -296,55 +354,67 @@
 
     async function runResourceAction(node, action) {
       if (!node || !action) return;
-      if ((action.params || action.parameters || []).length) {
-        openOriginal(originalNodePath(node, 'summary'));
-        return;
+      const params = action.params || action.parameters || [];
+      const resourceActionParameters = [];
+      for (const param of params) {
+        const value = prompt(`${action.displayName || action.name}: ${param.name}`, param.default ?? '');
+        if (value === null) return;
+        resourceActionParameters.push({name: param.name, value, type: param.type, default: param.default});
       }
-      if (!confirm(`Run resource action “${action.name}” on ${node.kind} “${node.name}”?`)) return;
+      if (!params.length && !confirm(`Run resource action “${action.displayName || action.name}” on ${node.kind} “${node.name}”?`)) return;
+      if (params.length && !confirm(`Run “${action.displayName || action.name}” with the entered parameters?`)) return;
       const body = {
         appNamespace: appNamespace(), namespace: node.namespace || '', resourceName: node.name,
         version: node.version || '', kind: node.kind, group: node.group || '',
-        resourceActionParameters: [], action: action.name
+        resourceActionParameters, action: action.name
       };
       await api(`/api/v1/applications/${encodeURIComponent(appName())}/resource/actions/v2`, {method: 'POST', body: JSON.stringify(body)});
       await loadInspector(node, true);
       await reloadApp();
     }
 
-    async function loadLogs(node, container = '') {
+    async function loadLogs(node, container = '*') {
       const key = refKey(node);
       const current = inspector.get(key) || {};
-      inspector.set(key, {...current, logsLoading: true});
+      const availableContainers = current.containers?.length ? current.containers : containerNames(node, current);
+      const selectedContainers = container === '*' ? availableContainers : [container];
+      if (!selectedContainers.length) {
+        inspector.set(key, {...current, logsLoading: false, logs: 'No Pod containers were found for this resource.', logContainer: container});
+        rerender();
+        return;
+      }
+      inspector.set(key, {...current, containers: availableContainers, logsLoading: true, logContainer: container});
       rerender();
-      try {
-        const live = current.live;
-        const selectedContainer = container || live?.spec?.containers?.[0]?.name || '';
+      const requests = selectedContainers.map(async selectedContainer => {
         const query = qs({
           appNamespace: appNamespace(), container: selectedContainer, namespace: node.namespace || '', follow: false,
           ...(node.kind === 'Pod' ? {podName: node.name} : {group: node.group || '', kind: node.kind, resourceName: node.name}),
-          tailLines: 200
+          tailLines: 500, sinceSeconds: 0
         });
         const text = await fetchText(`/api/v1/applications/${encodeURIComponent(appName())}/logs?${query}`);
-        inspector.set(key, {...current, logsLoading: false, logs: parseSseLogs(text) || 'No log lines returned.', logContainer: selectedContainer});
-      } catch (error) {
-        inspector.set(key, {...current, logsLoading: false, logs: `Unable to load logs: ${error?.message || error}`});
-      }
+        return logEntries(text, selectedContainer);
+      });
+      const results = await Promise.allSettled(requests);
+      const entries = results.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+      const errors = results.filter(result => result.status === 'rejected').map(result => String(result.reason?.message || result.reason || 'Unable to load logs'));
+      const podNames = new Set(entries.map(entry => entry.podName).filter(Boolean));
+      const showSources = selectedContainers.length > 1 || podNames.size > 1 || node.kind !== 'Pod';
+      const logText = formatLogEntries(entries, node, showSources) || (errors.length ? errors.join('\n') : 'No log lines returned.');
+      inspector.set(key, {...current, containers: availableContainers, logsLoading: false, logs: logText, logContainer: container, logErrors: errors});
       rerender();
     }
 
     function pretty(value) {
       if (value === undefined || value === null) return 'Not available';
-      if (typeof value === 'string') {
-        try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
-      }
-      return JSON.stringify(value, null, 2);
+      const normalized = normalizeJson(value);
+      return typeof normalized === 'string' ? normalized : JSON.stringify(normalized, null, 2);
     }
 
     function eventRows(events) {
       return (events || []).slice(0, 100).map(event => `<div class="event-row ${event?.type === 'Warning' ? 'warn' : ''}"><div><b>${esc(event?.reason || event?.type || 'Event')}</b><span>${esc(event?.message || '')}</span></div><small>${esc(event?.lastTimestamp || event?.eventTime || event?.firstTimestamp || '')}</small></div>`).join('') || '<div class="drawer-empty">No events returned.</div>';
     }
 
-    function resourceTabs(node, data) {
+    function resourceTabs() {
       const tabs = ['summary', 'manifest', 'diff', 'events', 'logs', 'actions'];
       return `<div class="drawer-tabs" role="tablist" aria-label="Resource details">${tabs.map(tab => `<button role="tab" aria-selected="${view.resourceTab === tab}" data-resource-tab="${tab}" class="${view.resourceTab === tab ? 'active' : ''}">${tab[0].toUpperCase() + tab.slice(1)}</button>`).join('')}</div>`;
     }
@@ -352,19 +422,26 @@
     function resourceTabContent(node, data) {
       if (data?.loading) return '<div class="drawer-empty">Loading resource details…</div>';
       if (view.resourceTab === 'manifest') {
-        return `<div class="code-head"><b>Live manifest</b><button data-open-original="manifest">Open native</button></div><pre class="code-block">${esc(pretty(data?.live))}</pre>`;
+        return `<div class="code-head"><b>Live manifest</b></div><pre class="code-block">${esc(pretty(data?.live))}</pre>`;
       }
       if (view.resourceTab === 'diff') {
         return `<div class="split-code"><section><div class="code-head"><b>Desired</b></div><pre class="code-block">${esc(pretty(data?.managed?.targetState))}</pre></section><section><div class="code-head"><b>Live</b></div><pre class="code-block">${esc(pretty(data?.managed?.liveState || data?.live))}</pre></section></div>`;
       }
       if (view.resourceTab === 'events') return `<div class="event-list">${eventRows(data?.events)}</div>`;
       if (view.resourceTab === 'logs') {
-        const containers = data?.live?.spec?.containers || [];
-        return `<div class="logs-tools">${containers.length ? containers.map(container => `<button class="tool-button ${data?.logContainer === container.name ? 'active' : ''}" data-load-logs="${esc(container.name)}">${esc(container.name)}</button>`).join('') : '<button class="tool-button" data-load-logs="">Load logs</button>'}${node.kind === 'Pod' ? `<button class="tool-button" data-open-original="exec">Terminal</button>` : ''}</div><pre class="code-block logs">${esc(data?.logsLoading ? 'Loading logs…' : data?.logs || 'Choose a container or load logs.')}</pre>`;
+        const containers = data?.containers || containerNames(node, data);
+        const all = `<button class="tool-button ${data?.logContainer === '*' ? 'active' : ''}" data-load-logs="*">All containers</button>`;
+        const choices = containers.map(name => `<button class="tool-button ${data?.logContainer === name ? 'active' : ''}" data-load-logs="${esc(name)}">${esc(name)}</button>`).join('');
+        const nativeLogs = `<button class="tool-button" data-open-original="logs">Native log controls</button>`;
+        const terminal = node.kind === 'Pod' ? '<button class="tool-button" data-open-original="exec">Terminal</button>' : '';
+        return `<div class="logs-tools">${containers.length ? all + choices : ''}<button class="tool-button" data-load-logs="${esc(data?.logContainer || '*')}">Refresh logs</button>${nativeLogs}${terminal}</div><div class="drawer-note">Deployment and ReplicaSet log queries include every matching Pod; “All containers” loads every init, app, and ephemeral container returned by the workload manifest.</div><pre class="code-block logs">${esc(data?.logsLoading ? 'Loading logs…' : data?.logs || (containers.length ? 'Choose All containers or an individual container.' : 'No containers were found for this resource.'))}</pre>`;
       }
       if (view.resourceTab === 'actions') {
         const actions = data?.actions || [];
-        return `<div class="action-list">${actions.map(action => `<button class="action-row" data-resource-action="${esc(action.name)}" ${action.disabled ? 'disabled' : ''}><span><b>${esc(action.name)}</b>${action.disabled ? `<small>${esc(action.disabledMessage || 'Disabled by Argo CD')}</small>` : (action.params || action.parameters || []).length ? '<small>Opens native parameter form</small>' : '<small>Run with Argo CD RBAC</small>'}</span><span>›</span></button>`).join('') || '<div class="drawer-empty">No custom actions are available for this resource.</div>'}</div>`;
+        const links = data?.links || [];
+        const actionRows = actions.map(action => `<button class="action-row" data-resource-action="${esc(action.name)}" ${action.disabled ? 'disabled' : ''}><span><b>${esc(action.displayName || action.name)}</b>${action.disabled ? `<small>${esc(action.disabledMessage || 'Disabled by Argo CD')}</small>` : (action.params || action.parameters || []).length ? '<small>Enter parameters and run with Argo CD RBAC</small>' : '<small>Run with Argo CD RBAC</small>'}</span><span>›</span></button>`).join('');
+        const linkRows = links.map(link => `<a class="action-row resource-link" href="${esc(link.url || '#')}" target="_blank" rel="noopener noreferrer"><span><b>${esc(link.title || 'Resource link')}</b><small>${esc(link.description || link.url || '')}</small></span><span>↗</span></a>`).join('');
+        return `<div class="action-list">${actionRows || '<div class="drawer-empty">No custom actions are available for this resource.</div>'}${links.length ? `<div class="drawer-section"><h4>Links</h4>${linkRows}</div>` : ''}</div>`;
       }
       return `<div class="drawer-summary"><div class="kv"><span>Namespace</span><b>${esc(node.namespace || '(cluster)')}</b></div><div class="kv"><span>Health</span>${badge(nodeHealth(node))}</div><div class="kv"><span>Sync</span>${badge(nodeSync(node))}</div>${node.__orphaned ? '<div class="kv"><span>Relation</span><b>Orphaned</b></div>' : ''}${(node.info || []).slice(0, 12).map(item => `<div class="kv"><span>${esc(item?.name || 'Info')}</span><b>${esc(item?.value || '')}</b></div>`).join('')}${(node.images || []).length ? `<div class="drawer-section"><h4>Images</h4>${node.images.slice(0, 8).map(image => `<div class="drawer-line">${esc(image)}</div>`).join('')}</div>` : ''}${data?.error ? `<div class="drawer-note">Some resource metadata could not be loaded: ${esc(data.error)}</div>` : ''}</div>`;
     }
@@ -373,10 +450,10 @@
       const node = topology.positions.get(view.selected)?.node;
       if (!node) return '';
       if (node.__appNode) {
-        return `<aside class="topology-drawer"><div class="drawer-head"><div class="drawer-icon">APP</div><div class="drawer-title"><b>${esc(node.name)}</b><small>Application</small></div><button class="drawer-close" data-node-close aria-label="Close details">×</button></div><div class="drawer-body"><div class="kv"><span>Health</span>${badge(health(state.selected))}</div><div class="kv"><span>Sync</span>${badge(sync(state.selected))}</div><div class="kv"><span>Project</span><b>${esc(state.selected?.spec?.project || 'default')}</b></div><div class="drawer-note">Use the application tabs above the canvas for summary, diff, events, history, and source details.</div></div></aside>`;
+        return `<aside class="topology-drawer"><div class="drawer-head"><div class="drawer-icon">APP</div><div class="drawer-title"><b>${esc(node.name)}</b><small>Application</small></div><button class="drawer-close" data-node-close aria-label="Close details">×</button></div><div class="drawer-body"><div class="kv"><span>Health</span>${badge(health(state.selected))}</div><div class="kv"><span>Sync</span>${badge(sync(state.selected))}</div><div class="kv"><span>Project</span><b>${esc(state.selected?.spec?.project || 'default')}</b></div><div class="drawer-note">Use the application controls above the canvas for diff, sync, history, refresh, rollback, and lifecycle actions.</div></div></aside>`;
       }
       const data = inspector.get(refKey(node)) || {};
-      return `<aside class="topology-drawer"><div class="drawer-head"><div class="drawer-icon">${esc(kindCode(node.kind))}</div><div class="drawer-title"><b>${esc(node.name || node.kind)}</b><small>${esc(node.kind || 'Resource')}</small></div><button class="drawer-close" data-node-close aria-label="Close details">×</button></div><div class="drawer-actions"><button data-resource-sync>Sync</button><button data-resource-delete>Delete</button><button data-open-original="summary">Native</button></div>${resourceTabs(node, data)}<div class="drawer-body">${resourceTabContent(node, data)}</div></aside>`;
+      return `<aside class="topology-drawer"><div class="drawer-head"><div class="drawer-icon">${esc(kindCode(node.kind))}</div><div class="drawer-title"><b>${esc(node.name || node.kind)}</b><small>${esc(node.kind || 'Resource')}</small></div><button class="drawer-close" data-node-close aria-label="Close details">×</button></div><div class="drawer-actions"><button data-resource-sync>Sync</button><button data-resource-delete>Delete</button><button data-open-original="summary">Native fallback</button></div>${resourceTabs()}<div class="drawer-body">${resourceTabContent(node, data)}</div></aside>`;
     }
 
     function graphMarkup() {
@@ -508,7 +585,7 @@
         const action = data?.actions?.find(item => item.name === button.dataset.resourceAction);
         if (node && action) void runResourceAction(node, action).catch(error => alert(`Action failed: ${error?.message || error}`));
       }));
-      state.root?.querySelectorAll('[data-load-logs]').forEach(button => button.addEventListener('click', () => { const node = selectedNode(); if (node) void loadLogs(node, button.dataset.loadLogs || ''); }));
+      state.root?.querySelectorAll('[data-load-logs]').forEach(button => button.addEventListener('click', () => { const node = selectedNode(); if (node) void loadLogs(node, button.dataset.loadLogs || '*'); }));
       state.root?.querySelectorAll('[data-open-original]').forEach(button => button.addEventListener('click', () => {
         const node = selectedNode();
         if (!node || node.__appNode) return;
@@ -544,6 +621,6 @@
       Object.assign(view, {mode: 'tree', scale: 1, x: 24, y: 24, selected: null, resourceTab: 'summary', focusIssues: false, fitPending: true, drag: null, expandedGroups: new Set()});
     }
 
-    return {styles, resourceNodes, needsAttention, toolbar, content, bind, reset};
+    return {styles, resourceNodes, needsAttention, toolbar, content, bind, reset, normalizeJson, containerNames};
   };
 })();
