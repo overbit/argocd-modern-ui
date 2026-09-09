@@ -18,6 +18,7 @@
   let routeObserver = null;
   let renderQueued = false;
   let focusIssues = false;
+  let disposed = false;
   const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 
   function normalizeUrl(value) {
@@ -91,6 +92,18 @@
     return /^\/applications\/[^/]+/.test(path);
   }
 
+  function extensionContextAvailable() {
+    try {
+      return Boolean(globalThis.chrome?.runtime?.id);
+    } catch {
+      return false;
+    }
+  }
+
+  function isExtensionContextInvalidated(error) {
+    return /extension context invalidated/i.test(String(error?.message || error || ''));
+  }
+
   function removeToolHost() {
     toolHost?.remove();
     toolHost = null;
@@ -115,12 +128,59 @@
     unmountFullUi();
   }
 
+  function disposeExtensionContext() {
+    if (disposed) {
+      return;
+    }
+    disposed = true;
+    renderQueued = false;
+    routeObserver?.disconnect();
+    routeObserver = null;
+    systemTheme.removeEventListener?.('change', queueRender);
+    window.removeEventListener('popstate', queueRender);
+    window.removeEventListener('hashchange', queueRender);
+    window.removeEventListener('pageshow', queueRender);
+    try {
+      globalThis.chrome?.storage?.onChanged?.removeListener?.(handleStorageChanged);
+    } catch {
+      // The extension API itself may already be unavailable. DOM cleanup is still safe.
+    }
+    try {
+      disableModernUi();
+    } catch {
+      // Never allow cleanup to restart the invalidated runtime loop.
+    }
+    globalThis.__ARGOCD_MODERN_UI_CONTENT__ = false;
+  }
+
+  function handleRuntimeError(error) {
+    if (isExtensionContextInvalidated(error) || !extensionContextAvailable()) {
+      disposeExtensionContext();
+      return;
+    }
+    console.error('[Argo CD Modern UI] Runtime error.', error);
+  }
+
+  async function setStoredSettings(values) {
+    if (disposed || !extensionContextAvailable()) {
+      disposeExtensionContext();
+      return false;
+    }
+    try {
+      await chrome.storage.local.set(values);
+      return true;
+    } catch (error) {
+      handleRuntimeError(error);
+      return false;
+    }
+  }
+
   function versionText() {
     return document.querySelector('.sidebar__version')?.textContent?.trim() || '';
   }
 
   function mountTools(configuredUrl, theme) {
-    if (!document.body) {
+    if (disposed || !document.body) {
       return;
     }
 
@@ -162,11 +222,11 @@
     `;
 
     shadow.getElementById('original')?.addEventListener('click', () => {
-      void chrome.storage.local.set({uiMode: 'original', enabled: false});
+      void setStoredSettings({uiMode: 'original', enabled: false});
     });
 
     shadow.getElementById('full')?.addEventListener('click', () => {
-      void chrome.storage.local.set({uiMode: 'full', enabled: true});
+      void setStoredSettings({uiMode: 'full', enabled: true});
     });
 
     shadow.getElementById('focus')?.addEventListener('click', () => {
@@ -188,6 +248,9 @@
   }
 
   function applyHybridUi(configuredUrl, theme) {
+    if (disposed) {
+      return;
+    }
     unmountFullUi();
     applyBaseAttributes(configuredUrl, 'hybrid', theme);
     if (focusIssues && isApplicationDetail(configuredUrl)) {
@@ -200,6 +263,9 @@
   }
 
   async function applyFullUi(configuredUrl, theme) {
+    if (disposed) {
+      return;
+    }
     focusIssues = false;
     document.documentElement.removeAttribute(FOCUS_ATTRIBUTE);
     removeToolHost();
@@ -211,7 +277,22 @@
   }
 
   async function render() {
-    const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
+    if (disposed || !extensionContextAvailable()) {
+      disposeExtensionContext();
+      return;
+    }
+
+    let settings;
+    try {
+      settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
+    } catch (error) {
+      handleRuntimeError(error);
+      return;
+    }
+
+    if (disposed) {
+      return;
+    }
     if (!isAllowedLocation(location.href, settings.configuredUrl)) {
       disableModernUi();
       return;
@@ -232,39 +313,61 @@
   }
 
   function queueRender() {
+    if (disposed) {
+      return;
+    }
+    if (!extensionContextAvailable()) {
+      disposeExtensionContext();
+      return;
+    }
     if (renderQueued) {
       return;
     }
     renderQueued = true;
     requestAnimationFrame(() => {
       renderQueued = false;
+      if (disposed) {
+        return;
+      }
       if (location.href !== lastHref) {
         lastHref = location.href;
         focusIssues = false;
       }
-      void render();
+      void render().catch(handleRuntimeError);
     });
   }
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+  function handleStorageChanged(changes, areaName) {
     if (areaName === 'local' && (changes.enabled || changes.uiMode || changes.theme || changes.configuredUrl)) {
       queueRender();
     }
-  });
+  }
 
-  routeObserver = new MutationObserver(() => {
-    const mode = document.documentElement.getAttribute(MODE_ATTRIBUTE);
-    const expectedHostMissing = mode === 'full' ? !document.getElementById(FULL_UI_HOST_ID) : !toolHost?.isConnected;
-    if (location.href !== lastHref || expectedHostMissing) {
-      queueRender();
+  try {
+    if (extensionContextAvailable()) {
+      chrome.storage.onChanged.addListener(handleStorageChanged);
+    } else {
+      disposeExtensionContext();
     }
-  });
-  routeObserver.observe(document.documentElement, {childList: true, subtree: true});
+  } catch (error) {
+    handleRuntimeError(error);
+  }
 
-  systemTheme.addEventListener?.('change', queueRender);
-  window.addEventListener('popstate', queueRender);
-  window.addEventListener('hashchange', queueRender);
-  window.addEventListener('pageshow', queueRender);
+  if (!disposed) {
+    routeObserver = new MutationObserver(() => {
+      const mode = document.documentElement.getAttribute(MODE_ATTRIBUTE);
+      const expectedHostMissing = mode === 'full' ? !document.getElementById(FULL_UI_HOST_ID) : !toolHost?.isConnected;
+      if (location.href !== lastHref || expectedHostMissing) {
+        queueRender();
+      }
+    });
+    routeObserver.observe(document.documentElement, {childList: true, subtree: true});
 
-  void render();
+    systemTheme.addEventListener?.('change', queueRender);
+    window.addEventListener('popstate', queueRender);
+    window.addEventListener('hashchange', queueRender);
+    window.addEventListener('pageshow', queueRender);
+
+    void render().catch(handleRuntimeError);
+  }
 })();
