@@ -79,11 +79,11 @@ test('full graph merges application resource status by Kubernetes identity rathe
   assert.equal(node.health.status, 'Degraded');
 });
 
-test('runtime loads full-native before full-ui in both injection paths', () => {
+test('runtime loads parity, changeflow, diagram routing, then content in both injection paths', () => {
   const background = fs.readFileSync(new URL('../extension/background.js', import.meta.url), 'utf8');
   const popup = fs.readFileSync(new URL('../extension/popup.js', import.meta.url), 'utf8');
   for (const source of [background, popup]) {
-    assert.match(source, /full-graph\.js['"],\s*['"]full-native\.js['"],\s*['"]full-ui\.js/);
+    assert.match(source, /full-graph\.js['"],\s*['"]full-native\.js['"],\s*['"]full-changeflow\.js['"],\s*['"]full-ui\.js['"],\s*['"]full-route\.js['"],\s*['"]content\.js/);
   }
 });
 
