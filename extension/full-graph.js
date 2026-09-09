@@ -4,7 +4,7 @@
   globalThis.__ARGOCD_FULL_GRAPH_FACTORY__ = ({state, api, fetchText, esc, badge, tone, health, sync, rerender, reloadApp, openOriginal}) => {
     const view = {
       mode: 'tree', scale: 1, x: 24, y: 24, selected: null, resourceTab: 'summary',
-      focusIssues: false, fitPending: true, drag: null
+      focusIssues: false, fitPending: true, drag: null, expandedGroups: new Set()
     };
     const inspector = new Map();
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -31,6 +31,8 @@
       return search.toString();
     };
     const isRenderableResource = node => Boolean(node && String(node.kind || '').trim() && String(node.name || '').trim());
+    const pluralKind = kind => String(kind || 'Resource').endsWith('s') ? String(kind || 'Resource') : `${kind || 'Resource'}s`;
+    const compactGroupKey = (parentKey, kind) => `__group__|${parentKey}|${kind}`;
 
     function resourceNodes() {
       const statusByKey = new Map((state.selected?.status?.resources || []).map(resource => [refKey(resource), resource]));
@@ -60,6 +62,59 @@
       return edges;
     }
 
+    function compactTree(resources, edges) {
+      const byKey = new Map(resources.map(node => [node.__key, node]));
+      const incoming = new Map(resources.map(node => [node.__key, []]));
+      const outgoing = new Map(resources.map(node => [node.__key, 0]));
+      edges.forEach(edge => {
+        if (incoming.has(edge.to)) incoming.get(edge.to).push(edge);
+        if (outgoing.has(edge.from)) outgoing.set(edge.from, (outgoing.get(edge.from) || 0) + 1);
+      });
+
+      const groupedByParentAndKind = new Map();
+      for (const node of resources) {
+        const parentEdges = incoming.get(node.__key) || [];
+        const leaf = (outgoing.get(node.__key) || 0) === 0;
+        const inactive = leaf && !node.__orphaned && !needsAttention(node) && view.selected !== node.__key;
+        if (!inactive || parentEdges.length !== 1) continue;
+        const parentKey = parentEdges[0].from;
+        const key = compactGroupKey(parentKey, node.kind);
+        if (!groupedByParentAndKind.has(key)) groupedByParentAndKind.set(key, {key, parentKey, kind: node.kind, members: []});
+        groupedByParentAndKind.get(key).members.push(node);
+      }
+
+      const groups = [...groupedByParentAndKind.values()]
+        .filter(group => group.members.length > 1 && !view.expandedGroups.has(group.key))
+        .sort((a, b) => a.key.localeCompare(b.key));
+      if (!groups.length) return {resources, edges, groups: []};
+
+      const groupedMemberKeys = new Set(groups.flatMap(group => group.members.map(member => member.__key)));
+      const compactResources = resources.filter(node => !groupedMemberKeys.has(node.__key));
+      const compactEdges = edges.filter(edge => !groupedMemberKeys.has(edge.to) && !groupedMemberKeys.has(edge.from));
+
+      for (const group of groups) {
+        group.members.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, {numeric: true}));
+        const namespaces = [...new Set(group.members.map(member => member.namespace || '(cluster)'))];
+        const healthStates = [...new Set(group.members.map(nodeHealth))];
+        const syncStates = [...new Set(group.members.map(nodeSync))];
+        const groupNode = {
+          __key: group.key,
+          __group: true,
+          __groupKey: group.key,
+          __groupMembers: group.members,
+          kind: group.kind,
+          name: `${group.members.length} ${pluralKind(group.kind)}`,
+          namespace: namespaces.length === 1 ? namespaces[0] : 'multiple namespaces',
+          health: {status: healthStates.length === 1 ? healthStates[0] : 'Unknown'},
+          status: syncStates.length === 1 ? syncStates[0] : 'Unknown',
+          count: group.members.length
+        };
+        compactResources.push(groupNode);
+        compactEdges.push({from: group.parentKey, to: group.key, synthetic: group.parentKey === '__app__', grouped: true});
+      }
+      return {resources: compactResources, edges: compactEdges, groups};
+    }
+
     function networkEdges(resources) {
       const byKey = new Map(resources.map(node => [node.__key, node]));
       const edges = [];
@@ -86,6 +141,7 @@
       let resources = resourceNodes().map(node => ({...node, __key: refKey(node)}));
       let edges;
       let networkFallback = false;
+      let groups = [];
       if (view.mode === 'network') {
         const network = networkEdges(resources);
         resources = network.resources;
@@ -93,6 +149,10 @@
         networkFallback = network.fallback;
       } else {
         edges = treeEdges(resources);
+        const compact = compactTree(resources, edges);
+        resources = compact.resources;
+        edges = compact.edges;
+        groups = compact.groups;
       }
 
       const depth = new Map(resources.map(node => [node.__key, 1]));
@@ -116,7 +176,7 @@
         if (!columns.has(d)) columns.set(d, []);
         columns.get(d).push(node);
       });
-      const priority = node => needsAttention(node) ? 0 : node.__orphaned ? 1 : 2;
+      const priority = node => needsAttention(node) ? 0 : node.__orphaned ? 1 : node.__group ? 3 : 2;
       for (const [column, nodes] of columns) {
         if (column) nodes.sort((a, b) => priority(a) - priority(b) || String(a.kind || '').localeCompare(String(b.kind || '')) || String(a.name || '').localeCompare(String(b.name || '')));
       }
@@ -138,7 +198,7 @@
           y += h + yGap;
         });
       }
-      return {resources, edges, positions, width, height, networkFallback};
+      return {resources, edges, positions, width, height, networkFallback, groups};
     }
 
     function edgePath(from, to) {
@@ -327,14 +387,18 @@
         const from = topology.positions.get(edge.from), to = topology.positions.get(edge.to);
         if (!from || !to) return '';
         const active = view.selected && (edge.from === view.selected || edge.to === view.selected);
-        return `<path class="topology-edge${edge.network ? ' network' : ''}${active ? ' active' : ''}${view.selected && !active ? ' dim' : ''}" d="${edgePath(from,to)}"/>`;
+        return `<path class="topology-edge${edge.network ? ' network' : ''}${edge.grouped ? ' grouped' : ''}${active ? ' active' : ''}${view.selected && !active ? ' dim' : ''}" d="${edgePath(from,to)}"/>`;
       }).join('');
       const nodes = [...topology.positions.values()].map(position => {
         const node = position.node;
         const nodeTone = node.__appNode ? tone(health(state.selected)) : tone(nodeHealth(node));
         const selected = view.selected === node.__key;
         const dim = view.selected && !connected.has(node.__key);
-        const focusDim = view.focusIssues && !node.__appNode && healthySynced(node);
+        const focusDim = view.focusIssues && !node.__appNode && (node.__group || healthySynced(node));
+        if (node.__group) {
+          const aria = `${node.count} collapsed inactive ${pluralKind(node.kind)}, click to expand`;
+          return `<button class="topology-node group-node ${nodeTone}${dim ? ' dim' : ''}${focusDim ? ' focus-dim' : ''}" style="left:${position.x}px;top:${position.y}px" data-group="${encodeKey(node.__groupKey)}" aria-label="${esc(aria)}"><span class="port in"></span><span class="node-icon">${esc(kindCode(node.kind))}</span><span class="node-copy"><span class="node-kind">Collapsed inactive resources</span><strong>${esc(node.name)}</strong><small>${esc(node.namespace || '(cluster)')} · click to expand</small></span><span class="group-count" aria-hidden="true">${node.count}</span><span class="port out"></span></button>`;
+        }
         const aria = `${node.kind || 'Resource'} ${node.name || ''}, health ${node.__appNode ? health(state.selected) : nodeHealth(node)}, sync ${node.__appNode ? sync(state.selected) : nodeSync(node)}`;
         return `<button class="topology-node ${nodeTone}${node.__appNode ? ' app-node' : ''}${node.__orphaned ? ' orphan' : ''}${selected ? ' selected' : ''}${dim ? ' dim' : ''}${focusDim ? ' focus-dim' : ''}" style="left:${position.x}px;top:${position.y}px" data-node="${encodeKey(node.__key)}" aria-label="${esc(aria)}"><span class="port in"></span><span class="node-icon">${esc(kindCode(node.kind))}</span><span class="node-copy"><span class="node-kind">${esc(node.kind || 'Resource')}${node.__orphaned ? ' · orphan' : ''}</span><strong>${esc(node.name || node.kind || 'Resource')}</strong><small>${esc(node.namespace || '(cluster)')}</small></span><span class="node-status" title="${esc(node.__appNode ? health(state.selected) : nodeHealth(node))}"></span><span class="port out"></span></button>`;
       }).join('');
@@ -355,7 +419,8 @@
     function toolbar(nodes = resourceNodes()) {
       const problems = nodes.filter(needsAttention).length;
       const modes = [['tree', 'Tree'], ['network', 'Network'], ['pods', 'Pods'], ['list', 'List']];
-      return `<div class="topology-toolbar"><div class="segmented" role="tablist" aria-label="Application resource view">${modes.map(([mode, label]) => `<button role="tab" aria-selected="${view.mode === mode}" data-resource-view="${mode}" class="${view.mode === mode ? 'active' : ''}">${label}</button>`).join('')}</div>${['tree', 'network'].includes(view.mode) ? `<button class="tool-button ${view.focusIssues ? 'active' : ''}" data-focus-issues aria-pressed="${view.focusIssues}">${view.focusIssues ? 'Show all' : 'Focus issues'}</button>` : ''}<span class="topology-count">${nodes.length} resources · ${problems} need attention</span><div class="spacer"></div>${['tree', 'network'].includes(view.mode) ? '<button class="tool-button" data-graph-action="fit">Fit view</button>' : ''}</div>`;
+      const collapseGroups = view.mode === 'tree' && view.expandedGroups.size ? '<button class="tool-button" data-collapse-groups>Collapse groups</button>' : '';
+      return `<div class="topology-toolbar"><div class="segmented" role="tablist" aria-label="Application resource view">${modes.map(([mode, label]) => `<button role="tab" aria-selected="${view.mode === mode}" data-resource-view="${mode}" class="${view.mode === mode ? 'active' : ''}">${label}</button>`).join('')}</div>${['tree', 'network'].includes(view.mode) ? `<button class="tool-button ${view.focusIssues ? 'active' : ''}" data-focus-issues aria-pressed="${view.focusIssues}">${view.focusIssues ? 'Show all' : 'Focus issues'}</button>` : ''}${collapseGroups}<span class="topology-count">${nodes.length} resources · ${problems} need attention</span><div class="spacer"></div>${['tree', 'network'].includes(view.mode) ? '<button class="tool-button" data-graph-action="fit">Fit view</button>' : ''}</div>`;
     }
 
     function content(nodes = resourceNodes()) {
@@ -407,6 +472,18 @@
         rerender();
       }));
       state.root?.querySelector('[data-focus-issues]')?.addEventListener('click', () => { view.focusIssues = !view.focusIssues; rerender(); });
+      state.root?.querySelector('[data-collapse-groups]')?.addEventListener('click', () => {
+        view.expandedGroups.clear();
+        view.selected = null;
+        view.fitPending = true;
+        rerender();
+      });
+      state.root?.querySelectorAll('[data-group]').forEach(node => node.addEventListener('click', event => {
+        event.stopPropagation();
+        view.expandedGroups.add(decodeKey(node.dataset.group));
+        view.fitPending = true;
+        rerender();
+      }));
       state.root?.querySelectorAll('[data-graph-action]').forEach(node => node.addEventListener('click', event => {
         event.stopPropagation();
         if (node.dataset.graphAction === 'fit') fit();
@@ -464,7 +541,7 @@
 
     function reset() {
       inspector.clear();
-      Object.assign(view, {mode: 'tree', scale: 1, x: 24, y: 24, selected: null, resourceTab: 'summary', focusIssues: false, fitPending: true, drag: null});
+      Object.assign(view, {mode: 'tree', scale: 1, x: 24, y: 24, selected: null, resourceTab: 'summary', focusIssues: false, fitPending: true, drag: null, expandedGroups: new Set()});
     }
 
     return {styles, resourceNodes, needsAttention, toolbar, content, bind, reset};
