@@ -88,7 +88,6 @@ html[data-argocd-modern="true"] .white-box,
 html[data-argocd-modern="true"] .argo-table-list,
 html[data-argocd-modern="true"] .applications-list__entry,
 html[data-argocd-modern="true"] .argo-modal__content,
-html[data-argocd-modern="true"] .sliding-panel,
 html[data-argocd-modern="true"] .filter,
 html[data-argocd-modern="true"] .filters-group { border-radius: 6px !important; box-shadow: none !important; }
 
@@ -104,23 +103,114 @@ html[data-argocd-modern="true"] .page__top-bar,
 html[data-argocd-modern="true"] .flex-top-bar,
 html[data-argocd-modern="true"] .top-bar { background: color-mix(in srgb, var(--amu-surface) 96%, transparent) !important; border-bottom-color: var(--amu-border) !important; backdrop-filter: blur(8px); }
 
+/* Force Argo CD components that otherwise keep light defaults onto the selected dark palette. */
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] {
+  color-scheme: dark !important;
+  background: var(--amu-bg) !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] body,
 html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .theme-light,
 html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .theme-dark,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .cd-layout,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .sb-page-wrapper,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .sb-page-wrapper__content,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .page,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .page__content,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .application-details,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .settings-overview {
+  background-color: var(--amu-bg) !important;
+  color: var(--amu-text) !important;
+}
+
 html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .white-box,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .panel,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-table-list,
 html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-table-list__row,
 html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .applications-list__entry,
 html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .application-details__status-panel,
-html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .page,
-html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .settings-overview,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .application-details__status-panel .row,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .resource-details,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .tabs__content,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .editable-panel,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .settings-overview__redirect-panel,
 html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-modal__content,
-html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .sliding-panel { background-color: var(--amu-surface) !important; color: var(--amu-text) !important; border-color: var(--amu-border) !important; }
-
-/* Resource details stay readable while retaining the original graph context underneath. */
-html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel,
-html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__body {
-  background-color: color-mix(in srgb, var(--amu-surface-raised) 94%, transparent) !important;
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .filter,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .filters-group,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .menu,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .dropdown__menu,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__menu,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__menu-list {
+  background-color: var(--amu-surface) !important;
   color: var(--amu-text) !important;
   border-color: var(--amu-border) !important;
-  backdrop-filter: saturate(112%);
-  -webkit-backdrop-filter: saturate(112%);
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .page__top-bar,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .flex-top-bar,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .top-bar,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-table-list__header,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .tabs__nav,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .tabs__nav__item,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .editable-panel__header {
+  background-color: var(--amu-surface-raised) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] input,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] textarea,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] select,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] option,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-field,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-select,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__control,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__input-container,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__single-value,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__value-container {
+  background-color: var(--amu-bg) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border-strong) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] pre,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] code,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .code-editor,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .logs-viewer,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .pod-logs-viewer {
+  background-color: var(--amu-bg) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] h1,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] h2,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] h3,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] h4,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] h5,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] label,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .tabs__nav__item {
+  color: var(--amu-text) !important;
+}
+
+/* Match the original SlidingPanel model: transparent/dim outside context, opaque resource pane. */
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel {
+  background-color: rgba(0, 0, 0, .30) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel:not(.sliding-panel--opened) {
+  background-color: transparent !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__wrapper,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__header,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__body,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__footer {
+  background-color: var(--amu-surface-raised) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__outside {
+  background: transparent !important;
 }
