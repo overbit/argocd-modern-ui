@@ -150,6 +150,7 @@
     } catch {
       // Never allow cleanup to restart the invalidated runtime loop.
     }
+    globalThis.__ARGOCD_MODERN_UI_RUNTIME__ = null;
     globalThis.__ARGOCD_MODERN_UI_CONTENT__ = false;
   }
 
@@ -174,6 +175,12 @@
       return false;
     }
   }
+
+  globalThis.__ARGOCD_MODERN_UI_RUNTIME__ = {
+    setUiMode(mode) {
+      return setStoredSettings({uiMode: mode, enabled: mode !== 'original'});
+    }
+  };
 
   function versionText() {
     return document.querySelector('.sidebar__version')?.textContent?.trim() || '';
