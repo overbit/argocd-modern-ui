@@ -1,66 +1,56 @@
-# Full mode parity matrix
+# Full mode direct parity matrix
 
-Baseline: Argo CD **3.5.x** native UI.
+Baseline: Argo CD **3.5.x**, validated against v3.5.2 UI/service source.
 
-The goal is functional parity without replacing upstream safety semantics with weaker clones. Coverage is classified as:
+**Rule:** Full parity is counted only when the replacement UI performs the capability itself through Argo CD REST, EventSource, or WebSocket APIs. Embedding/iframes of the original Argo CD frontend do not count and are not used.
 
-- **Custom** — implemented directly by the Full replacement UI using the authenticated Argo CD API.
-- **Custom + fallback** — Full implements the normal workflow directly and retains an in-Full native route for installed-version behavior such as terminal, dynamic extensions, or specialized forms.
-- **Native fallback** — the upstream Argo CD page remains available inside Full mode where browser/native frontend behavior is itself part of the capability.
+Hybrid and Original remain explicit user-selected escape modes, not Full feature implementations.
 
 ## Applications
 
-| Capability | Full coverage | Notes |
+| Capability | Full implementation | Notes |
 | --- | --- | --- |
-| Application list | Custom + fallback | Custom health/sync dashboard and search; native list remains available for installed-version list actions. |
-| Create application | Native fallback | Upstream project/source/destination discovery, validation and RBAC remain authoritative. |
-| Edit application | Native fallback | Upstream source/destination/plugin editors remain authoritative. |
-| Delete application | Custom + fallback | Full supports cascade/non-cascade deletion and foreground/background/orphan propagation with confirmation. |
-| Application health/sync summary | Custom | Visible in Full application detail. |
-| Resource tree diagram | Custom | Interactive Tree view. |
-| Network diagram | Custom | Uses Argo `networkingInfo.targetRefs`; falls back safely when network data is absent. |
-| Pod-focused view | Custom | Interactive resource/pod view. |
-| Resource list | Custom | List alternative to diagrams. |
-| Compact inactive resources | Custom | Same-kind inactive leaf siblings collapse into an expandable aggregate node. Resources requiring attention remain explicit. |
-| Pan / zoom / fit | Custom | Pointer drag, trackpad/wheel pan, Ctrl/Command + wheel zoom, controls, fit view. |
-| Focus issues | Custom | De-emphasizes healthy + synced resources. |
-| Resource selection | Custom | Relationship highlighting and inspector. |
-| Resource summary | Custom + fallback | Custom inspector plus upstream route for dynamic extension tabs. |
-| Live manifest | Custom | Recursive JSON decoding prevents escaped JSON-string rendering. |
-| Desired manifest | Custom | Managed-resource target state is recursively decoded and prettified. |
-| Resource diff | Custom | Desired/live structured views in the inspector. |
-| Application diff | Custom | Managed-resource diff panel. |
-| Events | Custom | Resource and application event panels. |
-| Logs | Custom + fallback | Full aggregates all matching Pods and every discovered init/app/ephemeral container for Deployment, ReplicaSet, Pod and Pod-template resources; native log UI remains available for streaming/filter/download/previous-log controls. |
-| Exec / terminal | Native fallback | Browser terminal/websocket behavior remains the upstream implementation inside Full mode. |
-| Resource actions | Custom | Parameterless and parameterized Argo resource actions run directly with Argo RBAC. |
-| Resource links | Custom | Argo-provided external resource links are shown in the inspector. |
-| Sync entire application | Custom | Advanced Full sync form implements the Argo 3.5.x manual flags, sync options, retry strategy and resource selection. |
-| Sync selected resource | Custom | API-backed resource sync from the resource inspector. |
-| Delete resource | Custom + fallback | Direct API-backed resource delete; native route remains available for installed-version dependent-resource presentation. |
-| Toggle Auto-Sync | Custom | Uses Argo's built-in `toggle-auto-sync` Application resource action. |
-| Confirm prune/deletion | Custom | Applies Argo's deletion-approval annotation after explicit confirmation. |
-| Refresh / hard refresh | Custom | Uses the native `refresh=normal|hard` application API behavior. |
-| Sync status | Custom | Operation status is shown as prettified structured data. |
-| Terminate operation | Custom | Direct operation termination with confirmation. |
-| Deployment history | Custom | Full history list. |
-| Rollback | Custom | Direct rollback; disables Auto-Sync first when required. |
-| Conditions | Custom | Full conditions view. |
-| Manifests | Custom | Generated manifests rendered as structured/prettified data. |
-| Hydration status | Custom | Shown when source hydrator operation state is present. |
-| Full-screen logs route | Native fallback | Full mode recognizes and contains the installed native route. |
-| Application extension tabs | Native fallback | Dynamically registered extension code must remain the installed frontend implementation. |
+| Application list/search | Direct | Custom health/sync dashboard and filtering. |
+| Create application | Direct | Complete Application object editor, POST `/api/v1/applications`; Argo validates/RBACs the request. |
+| Edit application | Direct | Complete Application object editor, PUT with validation. Covers source(s), destination, project, parameters/plugin configuration and sync policy fields. |
+| Delete application | Direct | Cascade/non-cascade plus foreground/background/orphan propagation. |
+| Health/sync summary | Direct | Full detail header. |
+| Tree / Network / Pods / List | Direct | Custom topology views. |
+| Compact inactive resources | Direct | Expandable same-kind leaf groups; issues stay visible. |
+| Pan / zoom / fit | Direct | Pointer/trackpad/keyboard-friendly graph controls. |
+| Focus issues | Direct | De-emphasizes Healthy + Synced resources. |
+| Resource summary | Direct | Inspector/API-backed details. |
+| Live/desired manifests | Direct | Recursive JSON-string decoding and pretty formatting. |
+| Resource/application diff | Direct | Managed-resource API and structured views. |
+| Events | Direct | Application/resource event APIs. |
+| Logs | Direct | All matching workload Pods and init/app/ephemeral containers; tail/since/filter/match-case/previous/follow controls. Follow mode uses EventSource. |
+| Pod terminal / exec | Direct | Authenticated `/terminal` WebSocket, container selection, resize/stdin, paste and common control keys. |
+| Resource actions | Direct | Parameterless and parameterized `resource/actions/v2`. |
+| Resource links | Direct | Argo-provided links. |
+| Sync application | Direct | Full advanced sync form. |
+| Sync selected resource | Direct | Resource-targeted sync request. |
+| Delete resource | Direct | Foreground/background/orphan choices; managed resources require typing the resource name; dependent resources are summarized. |
+| Toggle Auto-Sync | Direct | Built-in Application `toggle-auto-sync` action. |
+| Confirm prune/deletion | Direct | Argo deletion-approval annotation after confirmation. |
+| Refresh / hard refresh | Direct | `refresh=normal|hard`. |
+| Sync status | Direct | Operation state. |
+| Terminate operation | Direct | Operation DELETE. |
+| Deployment history | Direct | History list. |
+| Rollback | Direct | Direct rollback; Auto-Sync disabled first when required. |
+| Conditions | Direct | Application conditions. |
+| Manifests | Direct | Generated manifest API. |
+| Hydration status | Direct | Source hydrator operation state when present. |
 
-### Advanced sync parity
+### Advanced sync controls
 
-The Full sync form covers the controls exposed by Argo CD 3.5.x:
+Full implements the Argo CD 3.5.x controls directly:
 
 - revision
 - Prune
 - Dry Run
 - Apply Only
 - Force
-- resource selection: all / out-of-sync / none / individual
+- all / out-of-sync / none / individual resource selection
 - Skip Schema Validation (`Validate=false`)
 - Auto-Create Namespace
 - Apply Out of Sync Only
@@ -73,57 +63,48 @@ The Full sync form covers the controls exposed by Argo CD 3.5.x:
 - Replace
 - retry limit, duration, maximum duration and factor
 
-Destructive Force, Replace and Prune choices require an additional confirmation in Full mode.
+Force, Replace and destructive prune flows require additional confirmation.
 
 ## JSON presentation
 
-Argo APIs frequently return manifests and managed-resource state as JSON encoded inside strings. Full recursively parses complete JSON object/array strings before presentation, including nested encoded values, then renders them with indentation. This is used by application details, manifests, operation state, resource manifests and diff views.
+Full recursively parses strings that contain complete JSON objects/arrays before rendering. Nested JSON strings are normalized too. This applies to Application objects, manifests, desired/live state, operation state and generated payloads.
 
 ## ApplicationSets
 
-| Capability | Full coverage | Notes |
+| Capability | Full implementation | Notes |
 | --- | --- | --- |
-| ApplicationSet list | Custom + fallback | Custom overview; installed native controls remain available. |
-| ApplicationSet detail | Native fallback | Uses Argo CD's installed-version implementation. |
-| Generator/template controls | Native fallback | Preserves upstream forms and validation. |
+| List | Direct | Full overview. |
+| Create | Direct | Complete ApplicationSet object editor. |
+| Edit | Direct | Complete generator/template/goTemplate/sync-policy object editing. |
+| Delete | Direct | Direct API deletion. |
+| Generate preview | Direct | `/api/v1/applicationsets/generate`. |
 
 ## Settings
 
-All current Argo CD 3.5.x settings routes remain available inside Full mode through the same-origin native fallback surface.
-
-| Route | Capability |
-| --- | --- |
-| `/settings` | Settings overview |
-| `/settings/repos` | Repositories |
-| `/settings/certs` | TLS/SSH certificates |
-| `/settings/gpgkeys` | GPG keys |
-| `/settings/clusters` | Clusters |
-| `/settings/clusters/:server` | Cluster detail |
-| `/settings/projects` | Projects |
-| `/settings/projects/:name` | Project detail |
-| `/settings/accounts` | Accounts |
-| `/settings/accounts/:name` | Account detail |
-| `/settings/appearance` | Appearance |
-
-CRUD, credential handling, validation, confirmation dialogs and RBAC remain owned by the upstream Argo CD frontend for these administration surfaces.
+| Area | Full implementation | Notes |
+| --- | --- | --- |
+| Repositories | Direct | List/create/edit/delete; Git/Helm/OCI, HTTPS/SSH/GitHub App/GCP/Azure fields; force refresh. |
+| Write repositories | Direct | Same direct controls for write-back repositories. |
+| Repository credential templates | Direct | Standard and write credential-prefix templates via `/repocreds` and `/write-repocreds`. |
+| Certificates | Direct | List/add/delete TLS and SSH certificate entries. |
+| GPG keys | Direct | List/add/delete public keys. |
+| Clusters | Direct | List/detail/update/delete/cache invalidation. Argo's native UI itself delegates cluster addition to the CLI. |
+| Projects | Direct | Complete AppProject editing for sources, destinations, roles, policies, groups, resource allow/deny rules and sync windows. |
+| Project role JWTs | Direct | Token create/delete. |
+| Project events/links | Direct | Event and link APIs. |
+| Accounts | Direct | Account details, token create/delete and current-user password change. |
+| Appearance | Direct | Extension System/Light/Dark selection. |
+| User Info | Direct | `/session/userinfo`. |
+| Help/version | Direct | `/api/version` and server settings/capabilities. |
 
 ## Theme parity
 
-Full's selected theme is propagated into same-origin native fallback frames. Dark mode explicitly covers the upstream page/layout surfaces, tables, status panels, sliding panels, modals, filters, menus, dropdowns, selects, inputs, code editors and log viewers so a dark Full workspace does not expose light fallback cards. Native browser controls inherit `color-scheme: dark`.
+Full's own Shadow DOM uses the extension token palette and browser `color-scheme`. In Dark mode, forms, selects, editors, code/log surfaces, cards, dialogs and direct admin controls all resolve to dark surfaces.
 
-Hybrid keeps the resource sliding panel highly opaque but translucent so the topology remains perceptible under an open resource while text, controls and status content remain readable.
+Hybrid dark mode explicitly overrides Argo components that otherwise retain light defaults, including tables, tabs, resource details, editable panels, dialogs, menus, selects, inputs, code editors and log viewers.
 
-## Other upstream routes
+Hybrid resource details match Argo UI's `SlidingPanel` model: the resource pane remains opaque while `.sliding-panel` supplies a 30% dim transparent outside layer and `.sliding-panel__outside` remains transparent. The topology is visible around/behind the open resource without reducing panel readability.
 
-| Capability | Full coverage |
-| --- | --- |
-| User Info | Native fallback |
-| Help | Native fallback |
-| Dynamically registered system-level extensions | Complete native workspace |
-| Login/session behavior | Native Argo CD session |
+## What is not counted as Full parity
 
-## Why some fallback remains
-
-A browser terminal requires Argo CD's websocket/session handling; dynamically registered resource/system extensions execute installed frontend code; administrative credential forms are version-specific and security-sensitive. Full therefore keeps these surfaces in the same authenticated Argo CD origin instead of approximating them with a weaker implementation.
-
-For normal application operations and resource investigation, Full now uses its own controls and diagrams. Native fallback is a containment mechanism for functionality that inherently depends on the installed Argo CD frontend, not the primary application-detail workflow.
+Dynamically registered third-party UI extensions are executable frontend code supplied by another extension, not standard Argo CD controls. Full does not iframe the original workspace to claim support for them. Users can explicitly switch to Hybrid or Original mode when they intentionally want third-party native UI extensions, but those modes are separate products and are not counted in this matrix.
