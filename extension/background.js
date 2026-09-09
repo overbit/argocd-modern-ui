@@ -31,7 +31,7 @@ export async function syncRegistration() {
     {
       id: CONTENT_SCRIPT_ID,
       matches: [pattern],
-      js: ['full-graph-styles.js', 'full-graph.js', 'full-native.js', 'full-ui.js', 'content.js'],
+      js: ['full-graph-styles.js', 'full-graph.js', 'full-native.js', 'full-changeflow.js', 'full-ui.js', 'full-route.js', 'content.js'],
       css: ['modern.css', 'github-theme.css', 'graph.css'],
       runAt: 'document_idle',
       persistAcrossSessions: true
