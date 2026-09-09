@@ -8,6 +8,8 @@
     const direct = globalThis.__ARGOCD_FULL_DIRECT_FACTORY__?.({state, esc});
     const base = () => String(state.baseUrl || '').replace(/\/+$/, '');
     const resourceIdentity = resource => [resource?.group || '', resource?.kind || '', resource?.namespace || '', resource?.name || ''].join('|');
+    const resourceKey = resource => resource?.uid || resourceIdentity(resource);
+    let selectedResourceKey = null;
 
     function mergeResourceStatus() {
       const statusByIdentity = new Map((state.selected?.status?.resources || []).map(resource => [resourceIdentity(resource), resource]));
@@ -96,8 +98,78 @@
       mergeResourceStatus();
       return directLabels(graph[method](...args));
     };
+
+    const decodeNodeKey = value => {
+      try { return decodeURIComponent(String(value || '')); } catch { return String(value || ''); }
+    };
+
+    function dependentResources(node) {
+      const target = resourceKey(node);
+      const nodes = [...(state.tree?.nodes || []), ...(state.tree?.orphanedNodes || [])];
+      return nodes.filter(child => (child.parentRefs || []).some(parent => resourceKey(parent) === target));
+    }
+
+    async function deleteResourceWithControls(node) {
+      if (!node || node.__appNode) return;
+      const mode = String(prompt(
+        `Delete ${node.kind} “${node.name}”. Choose propagation: foreground, background, or orphan.`,
+        'foreground'
+      ) || '').trim().toLowerCase();
+      if (!mode) return;
+      if (!['foreground', 'background', 'orphan'].includes(mode)) {
+        alert('Deletion cancelled: choose foreground, background, or orphan.');
+        return;
+      }
+
+      const managed = (state.selected?.status?.resources || []).some(resource => resourceIdentity(resource) === resourceIdentity(node));
+      const children = dependentResources(node);
+      const childSummary = children.length
+        ? `\nDependent resources: ${children.slice(0, 5).map(child => `${child.kind}/${child.name}`).join(', ')}${children.length > 5 ? ` and ${children.length - 5} more` : ''}.`
+        : '';
+      if (managed) {
+        const confirmation = prompt(`Type “${node.name}” to confirm deletion.${childSummary}`);
+        if (confirmation !== node.name) return;
+      } else if (!confirm(`Delete ${node.kind} “${node.name}” using ${mode} propagation?${childSummary}`)) {
+        return;
+      }
+
+      const query = new URLSearchParams({
+        name: node.name || '',
+        appNamespace: state.selected?.metadata?.namespace || '',
+        namespace: node.namespace || '',
+        resourceName: node.name || '',
+        version: node.version || '',
+        kind: node.kind || '',
+        group: node.group || '',
+        force: String(mode === 'background'),
+        orphan: String(mode === 'orphan')
+      });
+      await request(`/api/v1/applications/${encodeURIComponent(state.selected?.metadata?.name || '')}/resource?${query}`, {method: 'DELETE'});
+      selectedResourceKey = null;
+      await reloadApp();
+    }
+
+    function installResourceControlCapture(root = state.root) {
+      if (!root || root.__argocdDirectResourceCapture) return;
+      root.__argocdDirectResourceCapture = true;
+      root.addEventListener('click', event => {
+        const nodeButton = event.target?.closest?.('[data-node]');
+        if (nodeButton) selectedResourceKey = decodeNodeKey(nodeButton.dataset.node);
+
+        const deleteButton = event.target?.closest?.('[data-resource-delete]');
+        if (!deleteButton) return;
+        const node = graph.resourceNodes().find(resource => resourceKey(resource) === selectedResourceKey);
+        if (!node) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        void deleteResourceWithControls(node).catch(error => alert(`Delete failed: ${error?.message || error}`));
+      }, true);
+    }
+
     const bind = (...args) => {
       mergeResourceStatus();
+      installResourceControlCapture(args[0] || state.root);
       return graph.bind(...args);
     };
 
@@ -106,7 +178,8 @@
       resourceNodes: wrapData('resourceNodes'),
       toolbar: wrapMarkup('toolbar'),
       content: wrapMarkup('content'),
-      bind
+      bind,
+      deleteResourceWithControls
     };
   };
 })();
