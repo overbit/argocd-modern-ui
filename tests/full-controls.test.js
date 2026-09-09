@@ -57,10 +57,10 @@ test('full application toolbar exposes the core native application actions', () 
 test('full sync control implements original manual flags, sync options, retry and resource selection', () => {
   const source = fs.readFileSync(new URL('../extension/full-controls.js', import.meta.url), 'utf8');
   for (const token of [
-    "data-sync-field=\"prune\"",
-    "data-sync-field=\"dryRun\"",
-    "data-sync-field=\"applyOnly\"",
-    "data-sync-field=\"force\"",
+    "checkbox('prune','Prune')",
+    "checkbox('dryRun','Dry Run')",
+    "checkbox('applyOnly','Apply Only')",
+    "checkbox('force','Force'",
     'Validate',
     'CreateNamespace',
     'ApplyOutOfSyncOnly',
@@ -71,5 +71,5 @@ test('full sync control implements original manual flags, sync options, retry an
     'Replace',
     'retryStrategy',
     'data-sync-select-resources'
-  ]) assert.match(source, new RegExp(token));
+  ]) assert.ok(source.includes(token), `expected full-controls.js to include ${token}`);
 });
