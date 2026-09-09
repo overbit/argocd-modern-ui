@@ -2,18 +2,19 @@
 
 ## Goals
 
-1. Offer Original, Hybrid, and Full UI modes for Argo CD 3.5.x.
-2. Request access only to the user-configured Argo CD origin.
+1. Offer Original, Hybrid and Full UI modes for Argo CD 3.5.x.
+2. Request access only to the user-configured Argo CD origin/path.
 3. Keep authentication inside the existing Argo CD browser session.
-4. Make rollback to Hybrid or Original UI immediate.
-5. Reach functional parity with upstream Argo CD without reimplementing privileged workflows less safely than upstream.
-6. Keep the redesigned topology interactive in both Hybrid and Full modes.
+4. Make user-selected escape to Hybrid or Original immediate.
+5. Implement standard Argo CD controls directly in Full mode rather than embedding the original frontend.
+6. Keep topology interaction first-class in both redesigned modes.
+7. Keep dark/light theme selection consistent across every surface.
 
 ## Runtime modes
 
 ### Original
 
-`content.js` removes all redesign attributes, the Hybrid floating controls, and the Full replacement host.
+`content.js` removes redesign attributes, Hybrid controls and the Full replacement host. Argo CD is untouched.
 
 ### Hybrid
 
@@ -21,122 +22,111 @@
 Argo CD native React application
   + data-argocd-modern="true"
   + data-argocd-modern-mode="hybrid"
-  + explicit extension theme attribute
+  + data-argocd-modern-theme="light|dark"
   + modern.css + github-theme.css + graph.css
   + isolated Shadow DOM mode/focus controls
 ```
 
-Native components continue to own all application behavior. The native resource DAG remains Argo CD's graph implementation and receives only the extension's n8n-inspired visual treatment.
+Argo continues to own behavior. The extension changes presentation only.
+
+Hybrid resource details preserve Argo UI's SlidingPanel architecture: an opaque resource pane is positioned over a semi-transparent `rgba(0,0,0,.3)` outside layer. The topology remains visible through the outside region while resource content keeps full contrast.
 
 ### Full
 
 ```text
-Argo CD authenticated page/session
-  -> full-graph-styles.js defines Full topology presentation
-  -> full-graph.js defines the custom interactive resource graph/inspector
-  -> full-native.js defines the same-origin parity surface and graph parity adapter
-  -> full-ui.js mounts the fixed Shadow DOM shell
-  -> native .cd-layout is hidden in the top-level page, not destroyed
-  -> Full custom views request same-origin /api/v1 data with browser credentials
-  -> advanced routes can render the upstream Argo CD UI in a same-origin iframe inside Full mode
-  -> Hybrid / Original controls remain available
+Argo CD authenticated browser session
+  -> full-graph-styles.js
+  -> full-graph.js
+  -> full-graph-base.js
+  -> full-direct.js
+  -> full-direct-patch.js
+  -> full-admin-extra.js
+  -> full-graph-direct-adapter.js
+  -> full-controls.js
+  -> full-changeflow.js
+  -> full-ui.js
+  -> full-route.js
+  -> content.js
 ```
 
-The native Argo CD runtime remains loaded underneath the replacement shell, so switching mode does not require reconstructing authentication state.
+`full-ui.js` mounts a fixed Shadow DOM shell and hides the top-level native `.cd-layout`; the Argo page/session remains alive underneath solely so authentication/session state is preserved. Full never embeds or iframes the native frontend for feature parity.
 
-## Functional parity model
+## Full direct-control model
 
-Full mode deliberately separates **replacement UX** from **upstream behavior parity**.
+Full surfaces communicate with Argo CD through the same authenticated interfaces used by the upstream v3.5.2 UI:
 
-### Replacement surfaces
+- REST JSON requests with `credentials: include`
+- EventSource for followed logs
+- WebSocket `/terminal` for Pod exec
 
-The extension directly owns:
+`full-direct.js` owns generic CRUD/admin surfaces, structured object editors, advanced logs and terminal behavior.
 
-- application dashboard/search/status overview
-- ApplicationSets overview
-- application summary
-- Tree / Network / Pods / List resource views
-- pan, zoom, fit-to-view, focus-issues, selection and relationship highlighting
-- resource inspector
-- selected resource API-backed summary/live/desired/diff/events/logs/actions where the Argo API can be reproduced safely
-- simple application/resource sync operations
+`full-controls.js` owns application-level operational controls: advanced sync, diff, events, manifests, history/rollback, refresh/hard refresh, Auto-Sync, operation state/termination, deletion confirmations and lifecycle actions.
 
-### Native parity surfaces
+`full-graph.js` owns topology/resource inspection. `full-graph-direct-adapter.js` keeps resource status typed, routes advanced resource controls to direct Full surfaces and implements native-equivalent foreground/background/orphan resource deletion without calling the original UI.
 
-For workflows where upstream behavior is broader, dynamic, privileged, or form-heavy, Full mode embeds the configured Argo CD route in a same-origin iframe. This happens **inside the Full shell**; it does not change `uiMode`.
+`full-admin-extra.js` adds settings capabilities that are separate upstream services rather than ordinary object CRUD: repository credential templates, repository force refresh, project role JWT lifecycle, project events/links and ApplicationSet generation preview.
 
-The parity surface preserves upstream:
+`full-direct-patch.js` contains a narrow compatibility repair for repository create-route interpolation without expanding `full-direct.js` further.
 
-- authentication/session cookies
-- RBAC decisions
-- validation
-- confirmation dialogs
-- application creation/edit/delete
-- advanced sync options
-- manifests and diff screens
-- history and rollback
-- resource actions with parameters
-- resource terminal/exec
-- full-screen logs
-- repository/project/cluster/account/certificate/GPG/appearance settings
-- user info and help
-- dynamically registered Argo CD system-level extension screens when using the complete native workspace
+## Standard Full API surface
 
-`full-native.js` compacts the upstream global sidebar for focused parity frames but keeps upstream action bars and page behavior. A separate **All features** surface keeps the complete native chrome available for dynamic extension discovery and edge-case routes.
+Representative endpoints include:
 
-## Full UI API surface
+### Applications/resources
 
-The custom replacement layer uses the same authenticated Argo CD REST API used by the native UI, including:
-
-- `GET /api/v1/applications`
-- `GET /api/v1/applications/{name}`
+- `GET/POST /api/v1/applications`
+- `GET/PUT/DELETE /api/v1/applications/{name}`
 - `GET /api/v1/applications/{name}/resource-tree`
 - `POST /api/v1/applications/{name}/sync`
+- `POST /api/v1/applications/{name}/rollback`
+- `DELETE /api/v1/applications/{name}/operation`
+- `GET /api/v1/applications/{name}/managed-resources`
 - `GET /api/v1/applications/{name}/resource`
 - `DELETE /api/v1/applications/{name}/resource`
-- `GET /api/v1/applications/{name}/managed-resources`
 - `GET /api/v1/applications/{name}/events`
+- `GET /api/v1/applications/{name}/manifests`
 - `GET /api/v1/applications/{name}/logs`
 - `GET /api/v1/applications/{name}/resource/actions`
 - `POST /api/v1/applications/{name}/resource/actions/v2`
-- `GET /api/v1/applicationsets`
+- `GET /api/v1/applications/{name}/resource/links`
+- `WS(S) <base>/terminal`
 
-Application namespace is forwarded through `appNamespace` using the same query/body placement as Argo CD 3.5.x's native applications service.
+`appNamespace` is placed in query/body locations matching the upstream Argo applications service.
 
-The parity layer avoids duplicating the rest of the API surface solely for parity. Instead, the installed Argo CD frontend remains the authority for advanced workflows until a replacement interaction is intentionally implemented and verified.
+### ApplicationSets
 
-## Native parity route baseline
+- `GET/POST /api/v1/applicationsets`
+- `GET/PUT/DELETE /api/v1/applicationsets/{name}`
+- `POST /api/v1/applicationsets/generate`
 
-Argo CD 3.5.x top-level routes covered by Full mode are:
+### Settings/admin
 
-- `/applications`
-- `/applicationsets`
-- `/settings`
-- `/user-info`
-- `/help`
+- `/api/v1/repositories`
+- `/api/v1/write-repositories`
+- `/api/v1/repocreds`
+- `/api/v1/write-repocreds`
+- `/api/v1/certificates`
+- `/api/v1/gpgkeys`
+- `/api/v1/clusters`
+- `/api/v1/projects`
+- `/api/v1/projects/{project}/roles/{role}/token`
+- `/api/v1/account`
+- `/api/v1/session/userinfo`
+- `/api/v1/settings`
+- `/api/version`
 
-Settings subroutes covered through the parity surface include:
+## Full replacement boundary
 
-- `/settings/repos`
-- `/settings/certs`
-- `/settings/gpgkeys`
-- `/settings/clusters`
-- `/settings/clusters/:server`
-- `/settings/projects`
-- `/settings/projects/:name`
-- `/settings/accounts`
-- `/settings/accounts/:name`
-- `/settings/appearance`
-
-Application/ApplicationSet detail and full-screen log routes are also valid parity targets. Dynamic system-level extension routes remain reachable from the **All features** native workspace.
+Full parity covers standard Argo CD 3.5.x controls implemented by these APIs. Dynamically registered third-party frontend extensions are not treated as parity by loading the original workspace inside Full. If a user explicitly selects Hybrid or Original mode to use third-party UI code, that is a mode change, not a Full implementation.
 
 ## URL scoping
 
-Chrome host permissions are origin-scoped. If the configured URL is `https://example.com/argocd`, Chrome permission is requested only for `https://example.com/*`, then `content.js` performs a second path-boundary check and activates only under `/argocd`.
+Chrome host permission is origin-scoped. For `https://example.com/argocd`, permission is requested only for `https://example.com/*`; `content.js` then applies a path-boundary check and activates only inside `/argocd`.
 
-Changing the configured origin removes the old host permission after the new permission has been granted.
+All REST, EventSource and WebSocket URLs are derived from the configured base so path-prefixed installations retain their prefix.
 
-Both API requests and parity frame URLs are built from the configured base URL, so path-prefixed installations keep `/argocd` or another configured prefix.
+Changing the configured origin removes the old host permission after the new permission is granted.
 
 ## Storage and migration
 
@@ -146,41 +136,37 @@ Both API requests and parity frame URLs are built from the configured base URL, 
 - `uiMode`: `original | hybrid | full`
 - `theme`: `system | light | dark`
 
-Version 0.1 used `enabled: boolean`. Version 0.2 migrates it at read time:
+Legacy `enabled: boolean` is migrated at read time and retained only as a compatibility hint.
 
-- `enabled: false` -> `original`
-- `enabled: true` -> `hybrid`
-
-Writes retain the old flag as a compatibility hint, but the explicit mode is authoritative.
-
-No Argo CD token, password, cookie, account data, repository credential, cluster credential, or session value is persisted by the extension.
+No Argo CD token, password, cookie, account data, repository credential, cluster credential, terminal data or fetched Kubernetes object is persisted by the extension.
 
 ## Theme resolution
 
-`System` is resolved in `content.js` using `prefers-color-scheme`. The resolved `light` or `dark` value is written to `data-argocd-modern-theme` and passed into Full mode. This makes extension theme selection independent of Argo CD's own `.theme-light` / `.theme-dark` state.
+`System` resolves in `content.js` through `prefers-color-scheme`. The resolved value is written to `data-argocd-modern-theme` and passed to Full.
 
-Parity frames retain upstream Argo CD behavior. The outer Full shell always uses the extension-selected theme.
+Full sets `color-scheme` and tokenized surfaces inside its Shadow DOM. Dark mode also covers direct editors, selects, terminal/log surfaces and admin forms.
 
-## Argo CD 3.5 Hybrid compatibility points
+Hybrid uses root-gated overrides for Argo components that retain light defaults, including tables, tabs, dialogs, menus, resource panels, selects, fields and code/log viewers.
 
-The Hybrid layer targets selectors confirmed in Argo CD v3.5.x source:
+## Hybrid compatibility points
 
-- `ui/src/app/sidebar/sidebar.tsx` / `sidebar.scss`
-- `ui/src/app/shared/components/page/page.scss`
-- `ui/src/app/applications/components/applications-list/*`
-- `ui/src/app/applications/components/application-details/*`
-- `ui/src/app/applications/components/application-resource-tree/*`
-- status icons from `ui/src/app/applications/components/utils.tsx`
+The Hybrid layer targets selectors confirmed in Argo CD v3.5.2 and Argo UI source, notably:
 
-The UI stylesheet is additive and root-gated. No Argo CD bundle is patched.
+- sidebar/page layout
+- applications list/detail
+- application resource tree
+- resource details/tabs
+- Argo UI `SlidingPanel`
+- status icons and common fields/selects/dialogs
+
+No Argo CD bundle is patched.
 
 ## Failure containment
 
-Four escape/parity paths exist:
+Three explicit escape paths remain:
 
-1. Extension popup -> **Original**.
-2. Hybrid floating control -> **Original** or **Full UI**.
-3. Full sidebar -> **Hybrid UI** or **Original UI**.
-4. Full sidebar -> **All features**, which keeps Full mode active while exposing the complete upstream Argo CD workspace inside the shell.
+1. Extension popup -> Original / Hybrid / Full.
+2. Hybrid floating control -> Original or Full.
+3. Full sidebar -> Hybrid or Original.
 
-The Full host is removed on mode change and the native layout becomes visible again. The Hybrid stylesheet remains harmless in Original mode because every rule requires the root redesign attribute.
+These are user-controlled mode switches only. Full does not use them internally to implement missing controls.
