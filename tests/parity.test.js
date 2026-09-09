@@ -6,7 +6,7 @@ await import('../extension/full-graph.js');
 await import('../extension/full-native.js');
 
 const createNative = baseUrl => globalThis.__ARGOCD_FULL_NATIVE_FACTORY__({
-  state: {baseUrl, root: null},
+  state: {baseUrl, root: null, theme: 'dark'},
   esc: value => String(value ?? '')
 });
 
@@ -79,19 +79,22 @@ test('full graph merges application resource status by Kubernetes identity rathe
   assert.equal(node.health.status, 'Degraded');
 });
 
-test('runtime loads parity, changeflow, diagram routing, then content in both injection paths', () => {
+test('runtime loads parity, controls, changeflow, diagram routing, then content in both injection paths', () => {
   const background = fs.readFileSync(new URL('../extension/background.js', import.meta.url), 'utf8');
   const popup = fs.readFileSync(new URL('../extension/popup.js', import.meta.url), 'utf8');
   for (const source of [background, popup]) {
-    assert.match(source, /full-graph\.js['"],\s*['"]full-native\.js['"],\s*['"]full-changeflow\.js['"],\s*['"]full-ui\.js['"],\s*['"]full-route\.js['"],\s*['"]content\.js/);
+    assert.match(source, /full-graph\.js['"],\s*['"]full-native\.js['"],\s*['"]full-controls\.js['"],\s*['"]full-changeflow\.js['"],\s*['"]full-ui\.js['"],\s*['"]full-route\.js['"],\s*['"]content\.js/);
   }
 });
 
-test('full UI exposes native parity sections and application controls tab', () => {
+test('full UI exposes direct application controls and retains a native fallback tab', () => {
   const fullUi = fs.readFileSync(new URL('../extension/full-ui.js', import.meta.url), 'utf8');
+  assert.match(fullUi, /__ARGOCD_FULL_CONTROLS_FACTORY__/);
+  assert.match(fullUi, /controls\?\.toolbar\(\)/);
+  assert.match(fullUi, /controls\?\.panel\(\)/);
   assert.match(fullUi, /data-view="settings"/);
   assert.match(fullUi, /data-view="user-info"/);
   assert.match(fullUi, /data-view="help"/);
   assert.match(fullUi, /data-app-tab="controls"/);
-  assert.match(fullUi, /All Argo CD features/);
+  assert.match(fullUi, /Native fallback/);
 });
