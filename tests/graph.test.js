@@ -37,8 +37,11 @@ test('full topology ignores resource entries without a Kubernetes identity', () 
   );
 });
 
-test('hybrid topology hides Argo decorative filtered indicators', () => {
+test('hybrid topology hides Argo decorative and empty indicator nodes', () => {
   const css = fs.readFileSync(new URL('../extension/graph.css', import.meta.url), 'utf8');
-  assert.match(css, /application-resource-tree__filtered-indicator\s*\{[^}]*display:\s*none\s*!important;/s);
-  assert.match(css, /application-resource-tree__filtered-indicator\s*\{[^}]*pointer-events:\s*none\s*!important;/s);
+  assert.match(css, /application-resource-tree__filtered-indicator/);
+  assert.match(css, /application-resource-tree__node:not\(\[title\]\):empty/);
+  assert.match(css, /display:\s*none\s*!important/);
+  assert.match(css, /visibility:\s*hidden\s*!important/);
+  assert.match(css, /pointer-events:\s*none\s*!important/);
 });
