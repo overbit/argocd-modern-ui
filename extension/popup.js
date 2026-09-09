@@ -48,19 +48,15 @@ function updateStatus() {
 
 async function syncRegistration() {
   const response = await chrome.runtime.sendMessage({type: 'sync-registration'});
-  if (!response?.ok) {
-    throw new Error(response?.error || 'Unable to update the site registration.');
-  }
+  if (!response?.ok) throw new Error(response?.error || 'Unable to update the site registration.');
 }
 
 async function injectIntoActiveTabIfEligible() {
-  if (!activeTab?.id || !activeTab.url || !isUrlWithinConfiguredBase(activeTab.url, currentSettings.configuredUrl)) {
-    return;
-  }
+  if (!activeTab?.id || !activeTab.url || !isUrlWithinConfiguredBase(activeTab.url, currentSettings.configuredUrl)) return;
 
   try {
     await chrome.scripting.insertCSS({target: {tabId: activeTab.id}, files: ['modern.css', 'github-theme.css', 'graph.css']});
-    await chrome.scripting.executeScript({target: {tabId: activeTab.id}, files: ['full-graph-styles.js', 'full-graph.js', 'full-native.js', 'full-controls.js', 'full-changeflow.js', 'full-ui.js', 'full-route.js', 'content.js']});
+    await chrome.scripting.executeScript({target: {tabId: activeTab.id}, files: ['full-graph-styles.js', 'full-graph.js', 'full-direct.js', 'full-controls.js', 'full-changeflow.js', 'full-ui.js', 'full-route.js', 'content.js']});
   } catch (error) {
     console.debug('[Argo CD Modern UI] Immediate injection skipped.', error);
   }
@@ -69,26 +65,17 @@ async function injectIntoActiveTabIfEligible() {
 saveButton.addEventListener('click', async () => {
   setMessage('');
   saveButton.disabled = true;
-
   try {
     const normalized = normalizeArgoUrl(urlInput.value);
     const newPattern = getOriginPattern(normalized);
     const oldPattern = currentSettings.configuredUrl ? getOriginPattern(currentSettings.configuredUrl) : null;
-
     const granted = await chrome.permissions.request({origins: [newPattern]});
-    if (!granted) {
-      throw new Error('Site access was not granted. The extension cannot run on this Argo CD instance.');
-    }
-
+    if (!granted) throw new Error('Site access was not granted. The extension cannot run on this Argo CD instance.');
     await setSettings({configuredUrl: normalized});
     currentSettings = {...currentSettings, configuredUrl: normalized};
     urlInput.value = normalized;
     await syncRegistration();
-
-    if (oldPattern && oldPattern !== newPattern) {
-      await chrome.permissions.remove({origins: [oldPattern]});
-    }
-
+    if (oldPattern && oldPattern !== newPattern) await chrome.permissions.remove({origins: [oldPattern]});
     await injectIntoActiveTabIfEligible();
     updateStatus();
     setMessage('Saved. Access is limited to this Argo CD URL.', 'success');
