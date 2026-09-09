@@ -31,6 +31,7 @@ export async function syncRegistration() {
         'full-graph-base.js',
         'full-direct.js',
         'full-direct-patch.js',
+        'full-admin-extra.js',
         'full-graph-direct-adapter.js',
         'full-controls.js',
         'full-changeflow.js',
