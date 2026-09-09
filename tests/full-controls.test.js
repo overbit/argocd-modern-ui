@@ -47,14 +47,14 @@ test('full JSON renderer recursively decodes JSON strings before pretty printing
   assert.doesNotMatch(output, /\\"kind\\"/);
 });
 
-test('full application toolbar exposes the core native application actions', () => {
+test('full application toolbar exposes the core application actions directly', () => {
   const markup = controls.toolbar();
   for (const label of ['Sync', 'Details', 'Diff', 'Auto-Sync', 'Sync Status', 'History', 'Events', 'Manifests', 'Conditions', 'Refresh', 'Hard Refresh', 'Delete']) {
     assert.match(markup, new RegExp(label.replace('-', '\\-')));
   }
 });
 
-test('full sync control implements original manual flags, sync options, retry and resource selection', () => {
+test('full sync control implements Argo manual flags, sync options, retry and resource selection', () => {
   const source = fs.readFileSync(new URL('../extension/full-controls.js', import.meta.url), 'utf8');
   for (const token of [
     "checkbox('prune','Prune')",
