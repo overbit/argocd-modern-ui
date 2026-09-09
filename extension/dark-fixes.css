@@ -1,0 +1,147 @@
+/* Final dark-mode guardrail loaded after all Hybrid presentation layers. */
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] {
+  color-scheme: dark !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] body,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] #app,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .cd-layout,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .page,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .page__content,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .sb-page-wrapper,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .sb-page-wrapper__content {
+  background: var(--amu-bg) !important;
+  color: var(--amu-text) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-button--base-o,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-button--light,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-button--neutral,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] button:not(.argo-button--base) {
+  background-color: var(--amu-surface) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-button--base-o:hover,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-button--light:hover,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] button:not(.argo-button--base):hover {
+  background-color: var(--amu-surface-hover) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] input,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] textarea,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] select,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] option,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-field,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-select,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__control,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__input-container,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__value-container,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__single-value,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__placeholder {
+  background-color: var(--amu-bg) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border-strong) !important;
+  caret-color: var(--amu-text) !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] input::placeholder,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] textarea::placeholder {
+  color: var(--amu-text-faint) !important;
+  opacity: 1 !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] input:-webkit-autofill,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] input:-webkit-autofill:hover,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--amu-text) !important;
+  box-shadow: 0 0 0 1000px var(--amu-bg) inset !important;
+  transition: background-color 99999s ease-out 0s !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__menu,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__menu-list,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__option,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__menu-notice,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .dropdown__menu,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .menu,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .popup-menu,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-dropdown,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-dropdown__content {
+  background: var(--amu-surface) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__option--is-focused,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__option:hover,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .menu__item:hover,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .dropdown__item:hover {
+  background: var(--amu-surface-hover) !important;
+  color: var(--amu-text) !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .select__option--is-selected {
+  background: var(--amu-accent-soft) !important;
+  color: var(--amu-text) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-modal,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-modal__content,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-modal__header,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-modal__body,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-modal__footer,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .popup,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .popup__content,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .tooltip,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .tooltip__content {
+  background-color: var(--amu-surface) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .white-box,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .panel,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .card,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-table-list,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .argo-table-list__row,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .settings-overview__redirect-panel,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .editable-panel,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .resource-details,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .tabs__content,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .application-details__status-panel {
+  background: var(--amu-surface) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+}
+
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] pre,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] code,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .CodeMirror,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .CodeMirror-scroll,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .cm-editor,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .cm-scroller,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .monaco-editor,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .monaco-editor .margin,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .monaco-editor-background,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .code-editor,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .logs-viewer,
+html[data-argocd-modern="true"][data-argocd-modern-theme="dark"] .pod-logs-viewer {
+  background-color: var(--amu-bg) !important;
+  color: var(--amu-text) !important;
+  border-color: var(--amu-border) !important;
+}
+
+/* Preserve Argo UI's transparency model: only the outside layer is translucent. */
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel {
+  background-color: rgba(0, 0, 0, .30) !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__outside {
+  background: transparent !important;
+}
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__wrapper,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__header,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__body,
+html[data-argocd-modern="true"][data-argocd-modern-mode="hybrid"] .sliding-panel__footer {
+  background: var(--amu-surface-raised) !important;
+  color: var(--amu-text) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
