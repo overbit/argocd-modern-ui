@@ -1,7 +1,7 @@
 (() => {
   if (globalThis.__ARGOCD_FULL_CONTROLS_FACTORY__) return;
 
-  globalThis.__ARGOCD_FULL_CONTROLS_FACTORY__ = ({state, api, esc, badge, health, sync, rerender, reloadApp}) => {
+  globalThis.__ARGOCD_FULL_CONTROLS_FACTORY__ = ({state, api, esc, badge, health, sync, rerender, reloadApp, onDeleted}) => {
     const ui = {panel: null, loading: false, data: null, error: ''};
     const appName = () => state.selected?.metadata?.name || '';
     const appNamespace = () => state.selected?.metadata?.namespace || '';
@@ -114,8 +114,8 @@
         await api(`${appPath('')}?validate=false`, {method: 'PUT', body: JSON.stringify(updated)});
       }
       await api(appPath('/rollback'), {method: 'POST', body: JSON.stringify({id: Number(id), appNamespace: appNamespace(), prune: false})});
+      Object.assign(ui, {panel: null, loading: false, data: null, error: ''});
       await reloadApp();
-      closePanel();
     }
 
     async function deleteApplication(cascade, propagationPolicy) {
@@ -123,12 +123,12 @@
       if (!confirm(`Delete application “${appName()}” using ${behavior}?`)) return;
       const query = qs({cascade, propagationPolicy: cascade ? propagationPolicy : '', appNamespace: appNamespace()});
       await api(`${appPath('')}?${query}`, {method: 'DELETE'});
-      closePanel();
+      Object.assign(ui, {panel: null, loading: false, data: null, error: ''});
       state.selected = null;
       state.tree = null;
-      state.view = 'applications';
       state.apps = [];
-      rerender();
+      if (onDeleted) await onDeleted();
+      else rerender();
     }
 
     const currentRevision = () => state.selected?.status?.sync?.revision || state.selected?.spec?.source?.targetRevision || state.selected?.spec?.sources?.[0]?.targetRevision || 'HEAD';
@@ -226,7 +226,7 @@
         retryStrategy
       };
       await api(appPath('/sync'), {method: 'POST', body: JSON.stringify(body)});
-      closePanel();
+      Object.assign(ui, {panel: null, loading: false, data: null, error: ''});
       await reloadApp();
     }
 
@@ -260,9 +260,8 @@
       return `<div class="details-grid"><div class="kv"><span>Project</span><b>${esc(state.selected?.spec?.project || 'default')}</b></div><div class="kv"><span>Health</span>${badge(health(state.selected))}</div><div class="kv"><span>Sync</span>${badge(sync(state.selected))}</div><div class="kv"><span>Destination</span><b>${esc(state.selected?.spec?.destination?.namespace || '(cluster)')}</b></div></div><div class="json-section"><h4>Application</h4><pre class="json-view">${esc(pretty(state.selected))}</pre></div>`;
     }
 
-    function operationPanel() {
-      const operation = state.selected?.status?.operationState;
-      return `<div class="details-grid"><div class="kv"><span>Phase</span><b>${esc(operation?.phase || 'No operation')}</b></div><div class="kv"><span>Started</span><b>${esc(operation?.startedAt || '—')}</b></div><div class="kv"><span>Finished</span><b>${esc(operation?.finishedAt || '—')}</b></div></div><pre class="json-view">${esc(pretty(operation))}</pre>${operation?.phase === 'Running' ? '<div class="control-submit"><button class="button danger" data-terminate-operation>Terminate operation</button></div>' : ''}`;
+    function operationPanel(value = state.selected?.status?.operationState) {
+      return `<div class="details-grid"><div class="kv"><span>Phase</span><b>${esc(value?.phase || 'No operation')}</b></div><div class="kv"><span>Started</span><b>${esc(value?.startedAt || '—')}</b></div><div class="kv"><span>Finished</span><b>${esc(value?.finishedAt || '—')}</b></div></div><pre class="json-view">${esc(pretty(value))}</pre>${value?.phase === 'Running' && value === state.selected?.status?.operationState ? '<div class="control-submit"><button class="button danger" data-terminate-operation>Terminate operation</button></div>' : ''}`;
     }
 
     function deletePanel() {
@@ -270,7 +269,7 @@
     }
 
     function panelTitle() {
-      return ({details:'Application details',diff:'Application diff',sync:'Synchronize',operation:'Sync status',history:'History and rollback',events:'Events',manifests:'Manifests',conditions:'Conditions',delete:'Delete application'}[ui.panel] || 'Application controls');
+      return ({details:'Application details',diff:'Application diff',sync:'Synchronize',operation:'Sync status',hydration:'Hydration status',history:'History and rollback',events:'Events',manifests:'Manifests',conditions:'Conditions',delete:'Delete application'}[ui.panel] || 'Application controls');
     }
 
     function panel() {
@@ -282,6 +281,7 @@
       else if (ui.panel === 'diff') body = diffPanel(ui.data);
       else if (ui.panel === 'sync') body = syncPanel();
       else if (ui.panel === 'operation') body = operationPanel();
+      else if (ui.panel === 'hydration') body = operationPanel(state.selected?.status?.sourceHydrator?.currentOperation);
       else if (ui.panel === 'history') body = historyPanel();
       else if (ui.panel === 'events') body = eventsPanel(ui.data);
       else if (ui.panel === 'manifests') body = manifestsPanel(ui.data);
@@ -294,21 +294,27 @@
       const app = state.selected;
       if (!app) return '';
       const automated = app.spec?.syncPolicy?.automated && app.spec.syncPolicy.automated.enabled !== false;
-      const running = app.status?.operationState?.phase === 'Running';
+      const operation = app.status?.operationState;
+      const running = operation?.phase === 'Running';
+      const history = app.status?.history || [];
+      const hasSource = Boolean(app.spec?.source || app.spec?.sources?.length || app.spec?.sourceHydrator);
+      const hydration = app.status?.sourceHydrator?.currentOperation;
       const confirmationNeeded = Boolean(app.status?.resources?.some(resource => resource.requiresDeletionConfirmation));
+      const confirmationLabel = app.metadata?.deletionTimestamp ? 'Confirm deletion' : 'Confirm pruning';
       return `<div class="app-control-toolbar" aria-label="Application controls">
-        <button class="button primary" data-app-control="sync">Sync</button>
-        <button class="button" data-app-control="details">Details</button>
+        <button class="button primary" data-app-control="sync" ${hasSource ? '' : 'disabled'}>Sync</button>
+        <button class="button" data-app-control="details" ${hasSource ? '' : 'disabled'}>Details</button>
         <button class="button" data-app-control="diff" ${sync(app) === 'Synced' ? 'disabled' : ''}>Diff</button>
         <button class="button" data-auto-sync>${automated ? 'Disable' : 'Enable'} Auto-Sync</button>
-        <button class="button" data-app-control="operation">Sync Status</button>
-        <button class="button" data-app-control="history">History</button>
+        <button class="button" data-app-control="operation" ${operation ? '' : 'disabled'}>Sync Status</button>
+        ${hydration ? '<button class="button" data-app-control="hydration">Hydration</button>' : ''}
+        <button class="button" data-app-control="history" ${history.length || operation ? '' : 'disabled'}>History</button>
         <button class="button" data-app-control="events">Events</button>
-        <button class="button" data-app-control="manifests">Manifests</button>
+        <button class="button" data-app-control="manifests" ${hasSource ? '' : 'disabled'}>Manifests</button>
         <button class="button" data-app-control="conditions">Conditions</button>
         <button class="button" data-refresh-mode="normal">Refresh</button>
         <button class="button" data-refresh-mode="hard">Hard Refresh</button>
-        ${confirmationNeeded ? '<button class="button warn" data-approve-deletion>Confirm pruning/deletion</button>' : ''}
+        ${confirmationNeeded ? `<button class="button warn" data-approve-deletion>${confirmationLabel}</button>` : ''}
         ${running ? '<button class="button warn" data-terminate-operation>Terminate</button>' : ''}
         <button class="button danger" data-app-control="delete">Delete</button>
       </div>`;
@@ -317,8 +323,9 @@
     function bind(root = state.root) {
       if (!root) return;
       root.querySelectorAll('[data-app-control]').forEach(button => button.addEventListener('click', () => {
+        if (button.disabled) return;
         const panelName = button.dataset.appControl;
-        if (panelName === 'details' || panelName === 'sync' || panelName === 'operation' || panelName === 'history' || panelName === 'conditions' || panelName === 'delete') return setPanel(panelName);
+        if (['details','sync','operation','hydration','history','conditions','delete'].includes(panelName)) return setPanel(panelName);
         if (panelName === 'diff') return void loadPanel('diff', () => api(`${appPath('/managed-resources')}?${qs({appNamespace: appNamespace()})}`));
         if (panelName === 'events') return void loadPanel('events', () => api(`${appPath('/events')}?${qs({appNamespace: appNamespace()})}`));
         if (panelName === 'manifests') return void loadPanel('manifests', () => api(`${appPath('/manifests')}?${qs({name: appName(), revision: currentRevision(), appNamespace: appNamespace()})}`));
@@ -355,7 +362,7 @@
       .json-view{margin:7px 0 0;max-height:560px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);padding:12px;font:11px/1.55 "SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;white-space:pre;tab-size:2}.json-section{margin-top:14px}.json-section h4,.app-diff-entry h4,.manifest-list h4,.control-form h4{margin:14px 0 7px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.json-split{display:grid;grid-template-columns:1fr 1fr;gap:10px}.app-diff-entry{padding:0 0 16px;border-bottom:1px solid var(--border)}.manifest-list section+section{margin-top:18px;border-top:1px solid var(--border);padding-top:4px}
       .control-form{display:grid;gap:12px}.control-grid{display:grid;gap:9px}.control-grid.checks{grid-template-columns:repeat(2,minmax(0,1fr))}.control-grid.thirds{grid-template-columns:repeat(3,minmax(0,1fr))}.control-grid.retry{grid-template-columns:140px repeat(4,minmax(0,1fr));align-items:end}.control-field{display:grid;gap:5px}.control-field label{font-size:11px;color:var(--muted);font-weight:650}.control-field input,.control-field select{width:100%;min-height:44px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);padding:0 10px}.control-check{min-height:48px;display:flex;align-items:flex-start;gap:9px;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer}.control-check input{margin-top:4px;accent-color:var(--accent)}.control-check span{display:grid;gap:2px}.control-check small{color:var(--muted);font-size:11px}.resource-select-head{display:flex;align-items:center;gap:10px}.resource-select-head h4{margin:0}.resource-select-head>div{margin-left:auto;display:flex;gap:5px}.resource-select-head button{border:0;background:transparent;color:var(--accent);cursor:pointer}.sync-resource-list{max-height:290px;overflow:auto;border:1px solid var(--border);border-radius:8px}.sync-resource{display:flex;gap:9px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer}.sync-resource:last-child{border:0}.sync-resource span{display:grid;gap:2px}.sync-resource small{color:var(--muted)}.control-submit{display:flex;justify-content:flex-end;gap:8px;padding-top:8px}.control-note{padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--muted)}.danger-note{border-color:color-mix(in srgb,var(--bad) 48%,var(--border));color:var(--bad)}.control-error{padding:12px;border:1px solid color-mix(in srgb,var(--bad) 50%,var(--border));border-radius:8px;color:var(--bad);background:color-mix(in srgb,var(--bad) 8%,var(--panel))}
       .history-list{display:grid}.history-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}.history-row>div{min-width:0;flex:1}.history-row b,.history-row small,.history-row code{display:block}.history-row small{color:var(--muted)}.history-row code{margin-top:3px;color:var(--text);overflow:hidden;text-overflow:ellipsis}.condition-list{display:grid;gap:8px}.condition-row{display:grid;gap:3px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}.condition-row span,.condition-row small{color:var(--muted)}
-      .app.dark .app-control-panel,.app.dark .app-control-head,.app.dark .app-control-body{background:#0d1117;color:#f0f6fc}.app.dark .json-view,.app.dark .control-field input,.app.dark .control-field select,.app.dark .control-check,.app.dark .condition-row{background:#010409;color:#f0f6fc;border-color:#30363d;color-scheme:dark}
+      .app.dark .app-control-panel,.app.dark .app-control-head,.app.dark .app-control-body{background:#0d1117;color:#f0f6fc}.app.dark .json-view,.app.dark .control-field input,.app.dark .control-field select,.app.dark .control-check,.app.dark .condition-row,.app.dark .sync-resource-list{background:#010409;color:#f0f6fc;border-color:#30363d;color-scheme:dark}
       @media(max-width:900px){.app-control-panel{right:8px;left:72px;width:auto;top:64px;bottom:8px}.control-grid.retry{grid-template-columns:1fr 1fr}.control-grid.thirds{grid-template-columns:1fr}.json-split{grid-template-columns:1fr}}@media(max-width:650px){.app-control-panel{left:6px;right:6px}.control-grid.checks,.control-grid.retry{grid-template-columns:1fr}}
     `;
 
